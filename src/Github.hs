@@ -21,14 +21,18 @@ import           Servant.Client
 type UN = Text
 type UA = Text
 
+data User =
+    User {login :: Text}
+        deriving (Generic, FromJSON, Show)
+
 type GitHubAPi = "users" :> Header "user-agent" UA
-                         :> Capture "username" UN :> Get '[JSON] Text
+                         :> Capture "username" UN :> Get '[JSON] User
             :<|> "second" :> Get '[JSON] Text
 
 gitHubAPI :: Proxy GitHubAPi
 gitHubAPI = Proxy
 
-first :: Maybe UA -> UN -> ClientM Text
+first :: Maybe UA -> UN -> ClientM User
 second :: ClientM Text
 
 first :<|> second = client gitHubAPI
