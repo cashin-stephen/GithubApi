@@ -7,7 +7,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators     #-}
 
-module GitHub where 
+module Github where 
 
 import           Control.Monad       (mzero)
 import           Data.Aeson
@@ -19,10 +19,12 @@ import           Servant.API
 import           Servant.Client
 
 type GitHubAPi = "first" :> Get '[JSON] Text
+            :<|> "second" :> Get '[JSON] Text
 
-gitHubAPI :: Proxy GitHubAPI
+gitHubAPI :: Proxy GitHubAPi
 gitHubAPI = Proxy
 
 first :: ClientM Text
+second :: ClientM Text
 
-first = client gitHubAPI
+first :<|> second = client gitHubAPI
