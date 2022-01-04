@@ -19,8 +19,8 @@ module Lib
 
 import qualified Github as GH
 import qualified Servant.Client               as SC
-import           Network.HTTP.Client          (defaultManagerSettings,
-                                                newManager)
+import           Network.HTTP.Client          (newManager)
+import           Network.HTTP.Client.TLS      (tlsManagerSettings)
 
 someFunc :: IO ()
 someFunc = do
@@ -30,7 +30,7 @@ someFunc = do
 
 githubCall :: IO ()
 githubCall = 
-    (SC.runClientM GH.first =<< env) >>= \case
+    (SC.runClientM (GH.first "cashin-stephen") =<< env) >>= \case
 
         Left err -> do
             putStrLn $ "error has occured: " ++ show err
@@ -39,5 +39,5 @@ githubCall =
     
     where env :: IO SC.ClientEnv
           env = do
-            manager <- newManager defaultManagerSettings
+            manager <- newManager tlsManagerSettings
             return $ SC.mkClientEnv manager (SC.BaseUrl SC.Http "api.github.com" 80 "")

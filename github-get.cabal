@@ -9,7 +9,7 @@ version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/github-get#readme>
 homepage:       https://github.com/githubuser/github-get#readme
 bug-reports:    https://github.com/githubuser/github-get/issues
-author:         Stephen Cashin
+author:         Author name here
 maintainer:     example@example.com
 copyright:      2020 Author name here
 license:        BSD3
@@ -35,6 +35,7 @@ library
       aeson
     , base >=4.7 && <5
     , http-client
+    , http-client-tls
     , servant
     , servant-client
     , text
@@ -52,6 +53,7 @@ executable github-get-exe
     , base >=4.7 && <5
     , github-get
     , http-client
+    , http-client-tls
     , servant
     , servant-client
     , text
@@ -70,6 +72,7 @@ test-suite github-get-test
     , base >=4.7 && <5
     , github-get
     , http-client
+    , http-client-tls
     , servant
     , servant-client
     , text

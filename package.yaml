@@ -5,7 +5,7 @@ name:                github-get
 version:             0.1.0.0
 github:              "githubuser/github-get"
 license:             BSD3
-author:              "Stephen Cashin"
+author:              "Author name here"
 maintainer:          "example@example.com"
 copyright:           "2020 Author name here"
 
@@ -29,6 +29,7 @@ dependencies:
   - servant
   - servant-client
   - http-client
+  - http-client-tls
 
 library:
   source-dirs: src
