@@ -25,15 +25,17 @@ import qualified Servant.Client               as SC
 import           Network.HTTP.Client          (newManager)
 import           Network.HTTP.Client.TLS      (tlsManagerSettings)
 import           System.Environment           (getArgs)
-import           Data.Text
+import Data.Text hiding (map,intercalate, groupBy, concat)
+import Data.List (intercalate, groupBy, sortBy)
+import Data.Either
 
 --highest level Function to invoke all functionality with some explanatory IO
 --takes a name parameter to select a user
 someFunc :: IO ()
 someFunc = do
     putStrLn "about to call"
-    (name:_) <- getArgs
-    githubCall $ pack name
+    (uName:_) <- getArgs
+    githubCall $ pack uName
     putStrLn "end."
 
 -- Function for handling all calls to the API, returns an IO
@@ -47,6 +49,14 @@ githubCall name =
             putStrLn $ "error has occured: " ++ show err
         Right res -> do
             putStrLn $ "Success! " ++ show res
+        
+             --get user repos
+            (SC.runClientM (GH.getRepos (Just "haskell-app") name ) =<< env) >>= \case
+                Left err -> do
+                    putStrLn $ "Problem getting repos: " ++ show err
+                Right repos -> do
+                    putStrLn $ " repos are:" ++
+                        intercalate ", " (map (\(GH.Repo n _ _) -> unpack n) repos)
 
 --Establishing the environemnt as Servant invoking the API in the IO space
     where env :: IO SC.ClientEnv

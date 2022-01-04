@@ -28,14 +28,23 @@ type UA = Text
 --Dataype in which to store the called value, requires a derivation of FromJSON
 --to convert JSON into text
 data User =
-    User {login :: Text}
-        deriving (Generic, FromJSON, Show)
+    User {login :: Text
+         , name :: Text
+         } deriving (Generic, FromJSON, Show)
+
+data Repo = 
+    Repo { name :: Text
+         , fullname :: Maybe Text
+         , language :: Maybe Text
+         } deriving (Generic, FromJSON, Show)
 
 
 --Establishin GitHubAPit which is used to handle all the call to github
 type GitHubAPI = "users" :> Header "user-agent" UA
                          :> Capture "username" UN :> Get '[JSON] User
-            :<|> "second" :> Get '[JSON] Text
+                         
+            :<|> "users" :> Header "user-agent" UA
+                         :> Capture "username" UN  :> "repos" :>  Get '[JSON] [Repo]
 
 
 gitHubAPI :: Proxy GitHubAPI
@@ -43,6 +52,6 @@ gitHubAPI = Proxy
 
 --Establishing typing for the API calls to be made
 first :: Maybe UA -> UN -> ClientM User
-second :: ClientM Text
+getRepos :: Maybe UA -> UN -> ClientM [Repo]
 
-first :<|> second = client gitHubAPI
+first :<|> getRepos = client gitHubAPI
