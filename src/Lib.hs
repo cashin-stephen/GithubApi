@@ -24,19 +24,23 @@ import qualified Github as GH
 import qualified Servant.Client               as SC
 import           Network.HTTP.Client          (newManager)
 import           Network.HTTP.Client.TLS      (tlsManagerSettings)
+import           System.Environment           (getArgs)
+import           Data.Text
 
 --highest level Function to invoke all functionality with some explanatory IO
+--takes a name parameter to select a user
 someFunc :: IO ()
 someFunc = do
     putStrLn "about to call"
-    githubCall
+    (name:_) <- getArgs
+    githubCall $ pack name
     putStrLn "end."
 
 -- Function for handling all calls to the API, returns an IO
-githubCall :: IO ()
-githubCall = 
+githubCall :: Text -> IO ()
+githubCall name = 
 --Servant runs the "first" call on user with the User Agent Haskell App
-    (SC.runClientM (GH.first (Just "haskell-app") "cashin-stephen") =<< env) >>= \case
+    (SC.runClientM (GH.first (Just "haskell-app") name) =<< env) >>= \case
 
 --Monad so it has a fail and retun case
         Left err -> do
