@@ -30,7 +30,7 @@ someFunc = do
 
 githubCall :: IO ()
 githubCall = 
-    (SC.runClientM (GH.first "cashin-stephen") =<< env) >>= \case
+    (SC.runClientM (GH.first (Just "haskell-app") "cashin-stephen") =<< env) >>= \case
 
         Left err -> do
             putStrLn $ "error has occured: " ++ show err

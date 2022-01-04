@@ -19,14 +19,16 @@ import           Servant.API
 import           Servant.Client
 
 type UN = Text
+type UA = Text
 
-type GitHubAPi = "users" :> Capture "username" UN :> Get '[JSON] Text
+type GitHubAPi = "users" :> Header "user-agent" UA
+                         :> Capture "username" UN :> Get '[JSON] Text
             :<|> "second" :> Get '[JSON] Text
 
 gitHubAPI :: Proxy GitHubAPi
 gitHubAPI = Proxy
 
-first :: UN -> ClientM Text
+first :: Maybe UA -> UN -> ClientM Text
 second :: ClientM Text
 
 first :<|> second = client gitHubAPI
