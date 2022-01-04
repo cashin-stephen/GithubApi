@@ -55,9 +55,13 @@ githubCall name =
                 Left err -> do
                     putStrLn $ "Problem getting repos: " ++ show err
                 Right repos -> do
-                    let rNames =  intercalate ", " (map (\(GH.Repo n _) -> unpack n) repos)
-                    let rLanguages = intercalate ", " (map (\(GH.Repo n _) -> unpack n) repos)
-                    putStrLn $ " repos are:" ++ rNames ++ rLanguages
+                    let rNames =  Prelude.unwords (map (\(GH.Repo n _) -> unpack n) repos)
+                    let rLanguages = Prelude.unwords (map (\(GH.Repo _ l) -> unpack l) repos)
+                    let listrNames = Prelude.words rNames
+                    let listrLanguages = Prelude.words rLanguages
+                    let repoList = interleave listrNames listrLanguages
+                    --putStrLn $ " repos are:" ++ rNames ++ rLanguages
+                    print repoList
                         
 
 --Establishing the environemnt as Servant invoking the API in the IO space
@@ -65,3 +69,6 @@ githubCall name =
           env = do
             manager <- newManager tlsManagerSettings
             return $ SC.mkClientEnv manager (SC.BaseUrl SC.Http "api.github.com" 80 "")
+    
+interleave :: [a] -> [a] -> [a]
+interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
