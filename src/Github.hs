@@ -20,14 +20,13 @@ type UN = Text
 type UA = Text
 
 data User =
-  User { login :: Text
+  GitHubUser { login :: Text
              , name  :: Text
              , email :: Maybe Text
              } deriving (Generic, FromJSON, Show)
 
 data Repo =
-        Repo { name :: Text
-             , fullname :: Maybe Text
+  Repo { name :: Text
              , language :: Maybe Text
              } deriving (Generic, FromJSON, Show)
 

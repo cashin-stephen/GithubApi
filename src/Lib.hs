@@ -55,8 +55,10 @@ githubCall name =
                 Left err -> do
                     putStrLn $ "Problem getting repos: " ++ show err
                 Right repos -> do
-                    putStrLn $ " repos are:" ++
-                        intercalate ", " (map (\(GH.Repo n _ _) -> unpack n) repos)
+                    let rNames =  intercalate ", " (map (\(GH.Repo n _) -> unpack n) repos)
+                    let rLanguages = intercalate ", " (map (\(GH.Repo n _) -> unpack n) repos)
+                    putStrLn $ " repos are:" ++ rNames ++ rLanguages
+                        
 
 --Establishing the environemnt as Servant invoking the API in the IO space
     where env :: IO SC.ClientEnv
