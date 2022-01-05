@@ -80,7 +80,10 @@ interleave :: [a] -> [a] -> [a]
 interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
 
 getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [(String,String,String)] -> [String] -> IO ()
-getUserCommits _ _ _ _ [] = putStrLn "End of commits"
+getUserCommits _ _ name acc [] = do 
+                                --print acc
+                                let finalAcc = removeAlien name [] acc
+                                print finalAcc
 getUserCommits auth env name acc (x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack x)) =<< env) >>= \case
                                 Left err -> do
                                     putStrLn $ "Problem getting commits: " ++ show err
@@ -88,8 +91,6 @@ getUserCommits auth env name acc (x:xs) = (SC.runClientM (GH.getCommits (Just "h
                                     let authorList =  map (\xx -> showCommit xx x) commits
                                     let newAcc = acc++authorList
                                     let sortedAuthorList = sortBy (\(_,_,a) (_,_,b) -> compare a b) authorList
-                                    --let abc = sortBy (comparing (a,b,c)) repoAuthorList
-                                    print acc
                                     getUserCommits auth env name newAcc xs
 
                                 
@@ -101,3 +102,11 @@ showCommitA (GH.CommitA author) repo = showAuthor author repo
 
 showAuthor :: GH.Author -> String -> (String,String,String)
 showAuthor (GH.Author name email date) repo = (repo, unpack name, unpack date)
+
+removeAlien :: Text -> [(String,String,String)] -> [(String,String,String)] -> [(String,String,String)]
+removeAlien _ acc [] = acc
+removeAlien name acc ((repo, uName, date):xs) = do
+                                                    if (unpack name) == uName
+                                                        then let newAcc = acc++[(repo,uName,date)] in removeAlien name newAcc xs
+                                                    else
+                                                        removeAlien name acc xs
