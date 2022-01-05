@@ -85,11 +85,22 @@ getUserCommits auth env name (x:xs) = (SC.runClientM (GH.getCommits (Just "haske
                                 Left err -> do
                                     putStrLn $ "Problem getting commits: " ++ show err
                                 Right commits -> do
-                                    putStrLn $ "Commits are: " ++ intercalate ", " (map (\(GH.Commit n _) -> unpack n) commits) 
-                                    --showAuthor auth env GH.Commit
+                                    --putStrLn $ "Commits are: " ++ intercalate ", " (map (\(GH.Commit n _) -> unpack n) commits) ++
+                                    let authorList =  ((map showCommit) commits)
+                                    let repoAuthorList = concatr x authorList
+                                    print repoAuthorList
                                     --putStrLn $  "Query is : " ++ (unpack name) ++ " " ++ x ++ "\n" ++
                                     --    "Commits are: " ++ intercalate ", " (map (\(GH.Commit _ n) -> unpack n) commits)
-                                    --getUserCommits env name xs
+                                    getUserCommits auth env name xs
                                 
-showAuthor :: BasicAuthData -> IO SC.ClientEnv -> GH.Commit -> IO ()
-showAuthor auth env a = putStrLn "Successfully typed"
+showCommit ::  GH.Commit -> [String]
+showCommit (GH.Commit sha commitA) = showCommitA commitA
+
+showCommitA :: GH.CommitA -> [String]
+showCommitA (GH.CommitA author) = showAuthor author
+
+showAuthor :: GH.Author -> [String]
+showAuthor (GH.Author name email date) = [unpack name, unpack date]
+
+concatr :: String -> [[String]] -> [[String]]
+concatr x ys = map (x:) ys
