@@ -21,6 +21,15 @@ type UN = Text
 type UA = Text
 type RepoName = Text
 
+data Author = 
+  Author { name :: Text
+         , email :: Maybe Text
+         , date :: Text
+         } deriving (Generic, FromJSON, Show)
+
+data CommitA = 
+  CommitA { author :: Author} deriving (Generic, FromJSON, Show)
+
 data User =
   GitHubUser { login :: Text
              , name  :: Maybe Text
@@ -34,7 +43,7 @@ data Repo =
 
 data Commit = 
   Commit { sha :: Text
-          --, author :: Object
+          , commit :: CommitA
               } deriving (Generic, FromJSON, Show)
 
 type GitHubAPI = "users" :> Header "user-agent" UA 

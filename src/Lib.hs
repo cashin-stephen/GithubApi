@@ -30,6 +30,7 @@ import Data.List (intercalate, groupBy, sortBy)
 import Data.Either
 import           Servant.API                (BasicAuthData (..))
 import Data.ByteString.UTF8 (fromString)
+import Data.Typeable
 
 --highest level Function to invoke all functionality with some explanatory IO
 --takes a name parameter to select a user
@@ -84,7 +85,11 @@ getUserCommits auth env name (x:xs) = (SC.runClientM (GH.getCommits (Just "haske
                                 Left err -> do
                                     putStrLn $ "Problem getting commits: " ++ show err
                                 Right commits -> do
-                                    putStrLn $ "Commits are: " ++ intercalate ", " (map (\(GH.Commit n) -> unpack n) commits)
+                                    putStrLn $ "Commits are: " ++ intercalate ", " (map (\(GH.Commit n _) -> unpack n) commits) 
+                                    --showAuthor auth env GH.Commit
                                     --putStrLn $  "Query is : " ++ (unpack name) ++ " " ++ x ++ "\n" ++
                                     --    "Commits are: " ++ intercalate ", " (map (\(GH.Commit _ n) -> unpack n) commits)
                                     --getUserCommits env name xs
+                                
+showAuthor :: BasicAuthData -> IO SC.ClientEnv -> GH.Commit -> IO ()
+showAuthor auth env a = putStrLn "Successfully typed"
