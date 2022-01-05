@@ -85,22 +85,18 @@ getUserCommits auth env name (x:xs) = (SC.runClientM (GH.getCommits (Just "haske
                                 Left err -> do
                                     putStrLn $ "Problem getting commits: " ++ show err
                                 Right commits -> do
-                                    --putStrLn $ "Commits are: " ++ intercalate ", " (map (\(GH.Commit n _) -> unpack n) commits) ++
-                                    let authorList =  ((map showCommit) commits)
-                                    let repoAuthorList = concatr x authorList
-                                    print repoAuthorList
-                                    --putStrLn $  "Query is : " ++ (unpack name) ++ " " ++ x ++ "\n" ++
-                                    --    "Commits are: " ++ intercalate ", " (map (\(GH.Commit _ n) -> unpack n) commits)
+                                    let authorList =  map (\xx -> showCommit xx x) commits
+                                    let sortedAuthorList = sortBy (\(_,_,a) (_,_,b) -> compare a b) authorList
+                                    --let abc = sortBy (comparing (a,b,c)) repoAuthorList
+                                    print sortedAuthorList
                                     getUserCommits auth env name xs
+
                                 
-showCommit ::  GH.Commit -> [String]
-showCommit (GH.Commit sha commitA) = showCommitA commitA
+showCommit ::  GH.Commit -> String -> (String,String,String)
+showCommit (GH.Commit sha commitA) repo = showCommitA commitA repo
 
-showCommitA :: GH.CommitA -> [String]
-showCommitA (GH.CommitA author) = showAuthor author
+showCommitA :: GH.CommitA -> String -> (String,String,String)
+showCommitA (GH.CommitA author) repo = showAuthor author repo
 
-showAuthor :: GH.Author -> [String]
-showAuthor (GH.Author name email date) = [unpack name, unpack date]
-
-concatr :: String -> [[String]] -> [[String]]
-concatr x ys = map (x:) ys
+showAuthor :: GH.Author -> String -> (String,String,String)
+showAuthor (GH.Author name email date) repo = (repo, unpack name, unpack date)
