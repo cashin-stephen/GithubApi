@@ -77,9 +77,10 @@ interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
 
 getUserCommits :: IO SC.ClientEnv -> Text -> [String] -> IO ()
 getUserCommits _ _ [] = putStrLn "End of commits"
-getUserCommits env name (_:x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") name (pack x)) =<< env) >>= \case
+getUserCommits env name (x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") name (pack x)) =<< env) >>= \case
                                 Left err -> do
                                     putStrLn $ "Problem getting commits: " ++ show err
                                 Right commits -> do
-                                    putStrLn $  "Query is : " ++ (unpack name) ++ " " ++ x ++ "\n" ++ "Commits are: " ++ intercalate ", " (map (\(GH.Commit n _) -> unpack n) commits)
-                                    --getUserCommits env (pack name) xs
+                                    putStrLn $  "Query is : " ++ (unpack name) ++ " " ++ x ++ "\n" ++
+                                         "Commits are: " ++ intercalate ", " (map (\(GH.Commit _ n) -> unpack n) commits)
+                                    getUserCommits env name xs

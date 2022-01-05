@@ -33,7 +33,7 @@ data Repo =
              } deriving (Generic, FromJSON, Show)
 
 data Commit = 
-  Commit { login :: Text
+  Commit { sha :: Text
               , node_id :: Text
               } deriving (Generic, FromJSON, Show)
 
@@ -42,7 +42,7 @@ type GitHubAPI = "users" :> Header "user-agent" UA
             :<|> "users" :> Header "user-agent" UA 
                          :> Capture "username" UN  :> "repos" :>  Get '[JSON] [Repo]
             :<|> "repos" :> Header  "user-agent" UA 
-                         :> Capture "username" UN  :> Capture "repo"     RepoName  :> "contributors" :>  Get '[JSON] [Commit]
+                         :> Capture "username" UN  :> Capture "repo"     RepoName  :> "commits" :>  Get '[JSON] [Commit]
 
 gitHubAPI :: Proxy GitHubAPI
 gitHubAPI = Proxy
