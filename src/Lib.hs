@@ -60,8 +60,10 @@ githubCall name =
                     let listrNames = Prelude.words rNames
                     let listrLanguages = Prelude.words rLanguages
                     let repoList = interleave listrNames listrLanguages
-                    --putStrLn $ " repos are:" ++ rNames ++ rLanguages
                     print repoList
+
+                    --get User Commits for each of their Repos
+                    getUserCommits env name listrNames
                         
 
 --Establishing the environemnt as Servant invoking the API in the IO space
@@ -72,3 +74,12 @@ githubCall name =
     
 interleave :: [a] -> [a] -> [a]
 interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
+
+getUserCommits :: IO SC.ClientEnv -> Text -> [String] -> IO ()
+getUserCommits _ _ [] = putStrLn "End of commits"
+getUserCommits env name (_:x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") name (pack x)) =<< env) >>= \case
+                                Left err -> do
+                                    putStrLn $ "Problem getting commits: " ++ show err
+                                Right commits -> do
+                                    putStrLn $  "Query is : " ++ (unpack name) ++ " " ++ x ++ "\n" ++ "Commits are: " ++ intercalate ", " (map (\(GH.Commit n _) -> unpack n) commits)
+                                    --getUserCommits env (pack name) xs

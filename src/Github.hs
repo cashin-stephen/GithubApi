@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators     #-}
 {-# LANGUAGE DuplicateRecordFields     #-}
+{-# LANGUAGE UnicodeSyntax, DeriveDataTypeable #-}
 
 module Github where 
 
@@ -18,10 +19,11 @@ import           Servant.Client
 
 type UN = Text
 type UA = Text
+type RepoName = Text
 
 data User =
   GitHubUser { login :: Text
-             , name  :: Text
+             , name  :: Maybe Text
              , email :: Maybe Text
              } deriving (Generic, FromJSON, Show)
 
@@ -30,15 +32,23 @@ data Repo =
              , language :: Text
              } deriving (Generic, FromJSON, Show)
 
+data Commit = 
+  Commit { login :: Text
+              , node_id :: Text
+              } deriving (Generic, FromJSON, Show)
+
 type GitHubAPI = "users" :> Header "user-agent" UA 
                          :> Capture "username" UN  :> Get '[JSON] User
             :<|> "users" :> Header "user-agent" UA 
                          :> Capture "username" UN  :> "repos" :>  Get '[JSON] [Repo]
+            :<|> "repos" :> Header  "user-agent" UA 
+                         :> Capture "username" UN  :> Capture "repo"     RepoName  :> "contributors" :>  Get '[JSON] [Commit]
 
 gitHubAPI :: Proxy GitHubAPI
 gitHubAPI = Proxy
 
 first :: Maybe UA -> UN -> ClientM User
 getRepos :: Maybe UA -> UN -> ClientM [Repo]
+getCommits :: Maybe UA -> UN -> RepoName -> ClientM [Commit]
 
-first :<|> getRepos = client gitHubAPI
+first :<|> getRepos :<|> getCommits = client gitHubAPI
