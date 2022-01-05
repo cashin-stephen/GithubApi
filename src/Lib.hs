@@ -28,21 +28,24 @@ import           System.Environment           (getArgs)
 import Data.Text hiding (map,intercalate, groupBy, concat)
 import Data.List (intercalate, groupBy, sortBy)
 import Data.Either
+import           Servant.API                (BasicAuthData (..))
+import Data.ByteString.UTF8 (fromString)
 
 --highest level Function to invoke all functionality with some explanatory IO
 --takes a name parameter to select a user
 someFunc :: IO ()
 someFunc = do
     putStrLn "about to call"
-    (uName:_) <- getArgs
-    githubCall $ pack uName
+    (uName:user:token:_) <- getArgs
+    let auth = BasicAuthData (fromString user) (fromString token)
+    githubCall auth $ pack uName
     putStrLn "end."
 
 -- Function for handling all calls to the API, returns an IO
-githubCall :: Text -> IO ()
-githubCall name = 
+githubCall :: BasicAuthData -> Text -> IO ()
+githubCall auth name = 
 --Servant runs the "first" call on user with the User Agent Haskell App
-    (SC.runClientM (GH.first (Just "haskell-app") name) =<< env) >>= \case
+    (SC.runClientM (GH.first (Just "haskell-app") auth name) =<< env) >>= \case
 
 --Monad so it has a fail and retun case
         Left err -> do
@@ -51,7 +54,7 @@ githubCall name =
             putStrLn $ "Success! " ++ show res
         
              --get user repos
-            (SC.runClientM (GH.getRepos (Just "haskell-app") name ) =<< env) >>= \case
+            (SC.runClientM (GH.getRepos (Just "haskell-app") auth name ) =<< env) >>= \case
                 Left err -> do
                     putStrLn $ "Problem getting repos: " ++ show err
                 Right repos -> do
@@ -63,7 +66,7 @@ githubCall name =
                     print repoList
 
                     --get User Commits for each of their Repos
-                    getUserCommits env name listrNames
+                    getUserCommits auth env name listrNames
                         
 
 --Establishing the environemnt as Servant invoking the API in the IO space
@@ -75,12 +78,13 @@ githubCall name =
 interleave :: [a] -> [a] -> [a]
 interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
 
-getUserCommits :: IO SC.ClientEnv -> Text -> [String] -> IO ()
-getUserCommits _ _ [] = putStrLn "End of commits"
-getUserCommits env name (x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") name (pack x)) =<< env) >>= \case
+getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [String] -> IO ()
+getUserCommits _ _ _ [] = putStrLn "End of commits"
+getUserCommits auth env name (x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack x)) =<< env) >>= \case
                                 Left err -> do
                                     putStrLn $ "Problem getting commits: " ++ show err
                                 Right commits -> do
-                                    putStrLn $  "Query is : " ++ (unpack name) ++ " " ++ x ++ "\n" ++
-                                         "Commits are: " ++ intercalate ", " (map (\(GH.Commit _ n) -> unpack n) commits)
-                                    getUserCommits env name xs
+                                    putStrLn $ "Commits are: " ++ intercalate ", " (map (\(GH.Commit n) -> unpack n) commits)
+                                    --putStrLn $  "Query is : " ++ (unpack name) ++ " " ++ x ++ "\n" ++
+                                    --    "Commits are: " ++ intercalate ", " (map (\(GH.Commit _ n) -> unpack n) commits)
+                                    --getUserCommits env name xs

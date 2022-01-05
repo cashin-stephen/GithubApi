@@ -34,21 +34,26 @@ data Repo =
 
 data Commit = 
   Commit { sha :: Text
-              , node_id :: Text
+          --, author :: Object
               } deriving (Generic, FromJSON, Show)
 
 type GitHubAPI = "users" :> Header "user-agent" UA 
+                         :> BasicAuth "github" Int
                          :> Capture "username" UN  :> Get '[JSON] User
+
             :<|> "users" :> Header "user-agent" UA 
+                         :> BasicAuth "github" Int
                          :> Capture "username" UN  :> "repos" :>  Get '[JSON] [Repo]
-            :<|> "repos" :> Header  "user-agent" UA 
+
+            :<|> "repos" :> Header  "user-agent" UA
+                         :> BasicAuth "github" Int 
                          :> Capture "username" UN  :> Capture "repo"     RepoName  :> "commits" :>  Get '[JSON] [Commit]
 
 gitHubAPI :: Proxy GitHubAPI
 gitHubAPI = Proxy
 
-first :: Maybe UA -> UN -> ClientM User
-getRepos :: Maybe UA -> UN -> ClientM [Repo]
-getCommits :: Maybe UA -> UN -> RepoName -> ClientM [Commit]
+first :: Maybe UA -> BasicAuthData -> UN -> ClientM User
+getRepos :: Maybe UA -> BasicAuthData -> UN -> ClientM [Repo]
+getCommits :: Maybe UA -> BasicAuthData -> UN -> RepoName -> ClientM [Commit]
 
 first :<|> getRepos :<|> getCommits = client gitHubAPI
