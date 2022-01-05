@@ -67,7 +67,7 @@ githubCall auth name =
                     print repoList
 
                     --get User Commits for each of their Repos
-                    getUserCommits auth env name listrNames
+                    getUserCommits auth env name [] listrNames
                         
 
 --Establishing the environemnt as Servant invoking the API in the IO space
@@ -79,17 +79,18 @@ githubCall auth name =
 interleave :: [a] -> [a] -> [a]
 interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
 
-getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [String] -> IO ()
-getUserCommits _ _ _ [] = putStrLn "End of commits"
-getUserCommits auth env name (x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack x)) =<< env) >>= \case
+getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [(String,String,String)] -> [String] -> IO ()
+getUserCommits _ _ _ _ [] = putStrLn "End of commits"
+getUserCommits auth env name acc (x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack x)) =<< env) >>= \case
                                 Left err -> do
                                     putStrLn $ "Problem getting commits: " ++ show err
                                 Right commits -> do
                                     let authorList =  map (\xx -> showCommit xx x) commits
+                                    let newAcc = acc++authorList
                                     let sortedAuthorList = sortBy (\(_,_,a) (_,_,b) -> compare a b) authorList
                                     --let abc = sortBy (comparing (a,b,c)) repoAuthorList
-                                    print sortedAuthorList
-                                    getUserCommits auth env name xs
+                                    print acc
+                                    getUserCommits auth env name newAcc xs
 
                                 
 showCommit ::  GH.Commit -> String -> (String,String,String)
