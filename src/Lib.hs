@@ -39,40 +39,50 @@ someFunc = do
     putStrLn "about to call"
     (uName:user:token:_) <- getArgs
     let auth = BasicAuthData (fromString user) (fromString token)
-    githubCall auth $ pack uName
+    githubCall auth $ uName
     putStrLn "end."
 
+class GithubApi a where
+    githubCall :: BasicAuthData -> a -> IO ()
+
+instance GithubApi [String] where    
+    githubCall auth [] = putStrLn $ "end"
+    githubCall auth (x:xs) = do
+                                githubCall auth x
+
 -- Function for handling all calls to the API, returns an IO
-githubCall :: BasicAuthData -> Text -> IO ()
-githubCall auth name = 
---Servant runs the "first" call on user with the User Agent Haskell App
-    (SC.runClientM (GH.first (Just "haskell-app") auth name) =<< env) >>= \case
-
---Monad so it has a fail and retun case
-        Left err -> do
-            putStrLn $ "error has occured: " ++ show err
-        Right res -> do
-            putStrLn $ "Success! " ++ show res
+instance GithubApi String where 
+    githubCall auth name = 
+    --Servant runs the "first" call on user with the User Agent Haskell App
+        (SC.runClientM (GH.first (Just "haskell-app") auth (pack name)) =<< env) >>= \case 
         
-             --get user repos
-            (SC.runClientM (GH.getRepos (Just "haskell-app") auth name ) =<< env) >>= \case
-                Left err -> do
-                    putStrLn $ "Problem getting repos: " ++ show err
-                Right repos -> do
-                    let rNames =  Prelude.unwords (map (\(GH.Repo n _) -> unpack n) repos)
-                    let listrNames = Prelude.words rNames
-                    let rLanguages = map getLang repos
-                    let languageKey = interleave [] listrNames rLanguages
 
-                    --get User Commits for each of their Repos
-                    getUserCommits auth env name [] languageKey 
+    --Monad so it has a fail and retun case
+            Left err -> do
+                putStrLn $ "error has occured: " ++ show err
+            Right res -> do
+                putStrLn $ "Success! " ++ show res
+            
+                --get user repos
+                (SC.runClientM (GH.getRepos (Just "haskell-app") auth (pack name) ) =<< env) >>= \case
+                    Left err -> do
+                        putStrLn $ "Problem getting repos: " ++ show err
+                    Right repos -> do
+                        let rNames =  Prelude.unwords (map (\(GH.Repo n _) -> unpack n) repos)
+                        let listrNames = Prelude.words rNames
+                        let rLanguages = map getLang repos
+                        let languageKey = interleave [] listrNames rLanguages
+
+                        --get User Commits for each of their Repos
+                        getUserCommits auth env (pack name) [] languageKey 
                         
+        --Establishing the environemnt as Servant invoking the API in the IO space                
+        where env = do
+                manager <- newManager tlsManagerSettings
+                return $ SC.mkClientEnv manager (SC.BaseUrl SC.Http "api.github.com" 80 "")                            
 
---Establishing the environemnt as Servant invoking the API in the IO space
-    where env :: IO SC.ClientEnv
-          env = do
-            manager <- newManager tlsManagerSettings
-            return $ SC.mkClientEnv manager (SC.BaseUrl SC.Http "api.github.com" 80 "")
+    
+        
     
 interleave :: [(a,b)] -> [a] -> [b] -> [(a,b)]
 interleave list _ [] =  list
