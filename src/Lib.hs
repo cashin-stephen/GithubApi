@@ -39,8 +39,20 @@ someFunc = do
     putStrLn "about to call"
     (uName:user:token:_) <- getArgs
     let auth = BasicAuthData (fromString user) (fromString token)
-    githubCall auth $ uName
-    putStrLn "end."
+    print uName
+    if (isInfixOf ".txt" (pack uName))
+        then do
+            line <- readLines uName
+            print line
+            githubCall auth $ line
+
+    else
+        do 
+            print "not file"
+            githubCall auth $ uName
+
+readLines :: FilePath -> IO [String]
+readLines = fmap Prelude.lines . readFile
 
 class GithubApi a where
     githubCall :: BasicAuthData -> a -> IO ()
@@ -49,6 +61,7 @@ instance GithubApi [String] where
     githubCall auth [] = putStrLn $ "end"
     githubCall auth (x:xs) = do
                                 githubCall auth x
+                                githubCall auth xs
 
 -- Function for handling all calls to the API, returns an IO
 instance GithubApi String where 
@@ -68,14 +81,14 @@ instance GithubApi String where
                     Left err -> do
                         putStrLn $ "Problem getting repos: " ++ show err
                     Right repos -> do
-                        let rNames =  Prelude.unwords (map (\(GH.Repo n _) -> unpack n) repos)
+                        let rNames = Prelude.unwords (map (\(GH.Repo n _) -> unpack n) repos)
                         let listrNames = Prelude.words rNames
                         let rLanguages = map getLang repos
                         let languageKey = interleave [] listrNames rLanguages
 
                         --get User Commits for each of their Repos
                         getUserCommits auth env (pack name) [] languageKey 
-                        
+
         --Establishing the environemnt as Servant invoking the API in the IO space                
         where env = do
                 manager <- newManager tlsManagerSettings
@@ -148,7 +161,7 @@ shortenedUC list = Prelude.take (quot (Prelude.length list) 4) list
 isFunc :: Maybe Text -> Bool
 isFunc Nothing = False
 isFunc (Just lang) = do
-                let funcLang = ["Haskell","Clean","Scala","Erlang","Clojure","SML","F#","Scheme","XSLT","SQL","Mathematica","Elixir","Elm","PureScript","Racket","Reason","Swift","Nix","Emacs","Lua","TSQL"]
+                let funcLang = ["Haskell","Clean","Scala","Erlang","Clojure","SML","F#","Scheme","XSLT","SQL","Mathematica","Elixir","Elm","PureScript","Racket","Reason","Swift","Nix","Emacs","Lua","TSQL","Emacs Lisp"]
                 if (elem (unpack lang) funcLang)
                     then True
                 else
