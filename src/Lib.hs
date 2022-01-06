@@ -60,11 +60,9 @@ githubCall auth name =
                     putStrLn $ "Problem getting repos: " ++ show err
                 Right repos -> do
                     let rNames =  Prelude.unwords (map (\(GH.Repo n _) -> unpack n) repos)
-                    let rLanguages = Prelude.unwords (map (\(GH.Repo _ l) -> unpack l) repos)
                     let listrNames = Prelude.words rNames
-                    let listrLanguages = Prelude.words rLanguages
-                    let languageKey = interleave listrNames listrLanguages
-                    print languageKey
+                    let rLanguages = map getLang repos
+                    let languageKey = interleave [] listrNames rLanguages
 
                     --get User Commits for each of their Repos
                     getUserCommits auth env name [] languageKey 
@@ -76,10 +74,16 @@ githubCall auth name =
             manager <- newManager tlsManagerSettings
             return $ SC.mkClientEnv manager (SC.BaseUrl SC.Http "api.github.com" 80 "")
     
-interleave :: [a] -> [a] -> [a]
-interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
+interleave :: [(a,b)] -> [a] -> [b] -> [(a,b)]
+interleave list _ [] =  list
+interleave list [] _ = list
+interleave list (x:xs) (y:ys) = list++[(x,y)]++(interleave list xs ys)
 
-getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [(String,String,String,String)] -> [String] -> IO ()
+getLang ::GH.Repo -> Maybe Text
+getLang (GH.Repo _ Nothing) = Nothing
+getLang (GH.Repo _ l) = l
+
+getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [(String,Maybe Text,String,String)] -> [(String,Maybe Text)] -> IO ()
 getUserCommits _ _ name acc [] = do 
                                                 let userCommits = removeNonUserCommits name [] acc
                                                 let sorteduserCommits = sortBy (\(_,_,_,a) (_,_,_,b) -> compare a b) userCommits
@@ -88,7 +92,7 @@ getUserCommits _ _ name acc [] = do
                                                 print earlyUserCommits
                                                 print pType
                                     
-getUserCommits auth env name acc (repo:lang:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack repo)) =<< env) >>= \case
+getUserCommits auth env name acc ((repo,lang):xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack repo)) =<< env) >>= \case
                                                 Left err -> do
                                                     putStrLn $ "Problem getting commits: " ++ show err
                                                 Right commits -> do
@@ -97,16 +101,16 @@ getUserCommits auth env name acc (repo:lang:xs) = (SC.runClientM (GH.getCommits 
                                                     getUserCommits auth env name newAcc xs
 
                                 
-showCommit ::  GH.Commit -> String -> String -> (String,String,String,String)
+showCommit ::  GH.Commit -> String -> Maybe Text -> (String,Maybe Text,String,String)
 showCommit (GH.Commit sha commitA) repo lang = showCommitA commitA repo lang
 
-showCommitA :: GH.CommitA -> String -> String -> (String,String,String,String)
+showCommitA :: GH.CommitA -> String -> Maybe Text -> (String,Maybe Text,String,String)
 showCommitA (GH.CommitA author) repo lang = showAuthor author repo lang
 
-showAuthor :: GH.Author -> String -> String -> (String,String,String,String)
+showAuthor :: GH.Author -> String -> Maybe Text -> (String,Maybe Text,String,String)
 showAuthor (GH.Author name email date) repo lang = (repo, lang, unpack name, unpack date)
 
-removeNonUserCommits :: Text -> [(String,String,String,String)] -> [(String,String,String,String)] -> [(String,String,String,String)]
+removeNonUserCommits :: Text -> [(String,Maybe Text,String,String)] -> [(String,Maybe Text,String,String)] -> [(String,Maybe Text,String,String)]
 removeNonUserCommits _ acc [] = acc
 removeNonUserCommits name acc ((repo, lang, uName, date):xs) = do
                                                                 if (unpack name) == uName
@@ -114,7 +118,7 @@ removeNonUserCommits name acc ((repo, lang, uName, date):xs) = do
                                                                 else
                                                                     removeNonUserCommits name acc xs
 
-determinePType :: Int -> Int -> Int -> [(String,String,String,String)] -> String
+determinePType :: Int -> Int -> Int -> [(String,Maybe Text,String,String)] -> String
 determinePType func oop other [] =                              if (func > (quot (oop+func+other) 2))
                                                                     then "User is a functional Programmer"
                                                                 else if (oop > (quot (oop+func+other) 2))
@@ -128,21 +132,23 @@ determinePType func oop other ((repo, lang, uName, date):xs) =  if(isFunc lang)
                                                                 else
                                                                     determinePType func oop (other+1) xs
 
-shortenedUC :: [(String,String,String,String)] -> [(String,String,String,String)]
+shortenedUC :: [(String,Maybe Text,String,String)] -> [(String,Maybe Text,String,String)]
 shortenedUC list = Prelude.take (quot (Prelude.length list) 4) list
 
-isFunc :: String -> Bool
-isFunc lang = do
+isFunc :: Maybe Text -> Bool
+isFunc Nothing = False
+isFunc (Just lang) = do
                 let funcLang = ["Haskell","Clean","Scala","Erlang","Clojure","SML","F#","Scheme","XSLT","SQL","Mathematica","Elixir","Elm","PureScript","Racket","Reason","Swift","Nix","Emacs","Lua","TSQL"]
-                if (elem lang funcLang)
+                if (elem (unpack lang) funcLang)
                     then True
                 else
                     False
 
-isOop :: String -> Bool
-isOop lang = do
+isOop :: Maybe Text -> Bool
+isOop Nothing = False
+isOop (Just lang) = do
     let oopLang = ["Python","C","C++","Java","JavaScript","Go","Ruby","C#","R","PHP","Visual Basic .Net","Perl","Dart","Kotlin","CommonLisp","MATLAB","Samlltalk","Groovy","CoffeeScript","Powershell", "Objective-C"]
-    if (elem lang oopLang)
+    if (elem (unpack lang) oopLang)
         then True
     else
         False

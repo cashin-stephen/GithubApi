@@ -38,7 +38,7 @@ data User =
 
 data Repo =
   Repo    { name :: Text
-          , language :: Text
+          , language :: Maybe Text
           } deriving (Generic, FromJSON, Show)
 
 data Commit = 
