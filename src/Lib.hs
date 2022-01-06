@@ -81,12 +81,12 @@ interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
 
 getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [(String,String,String,String)] -> [String] -> IO ()
 getUserCommits _ _ name acc [] = do 
-                                                --print acc
                                                 let userCommits = removeNonUserCommits name [] acc
                                                 let sorteduserCommits = sortBy (\(_,_,_,a) (_,_,_,b) -> compare a b) userCommits
                                                 let earlyUserCommits = shortenedUC sorteduserCommits
                                                 let pType = determinePType 0 0 0 earlyUserCommits
                                                 print earlyUserCommits
+                                                print pType
                                     
 getUserCommits auth env name acc (repo:lang:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack repo)) =<< env) >>= \case
                                                 Left err -> do
@@ -115,14 +115,34 @@ removeNonUserCommits name acc ((repo, lang, uName, date):xs) = do
                                                                     removeNonUserCommits name acc xs
 
 determinePType :: Int -> Int -> Int -> [(String,String,String,String)] -> String
-determinePType func oop other [] =                          if (func > (quot (oop+func+other) 2))
-                                                                            then "User is a functional Programmer"
-                                                                        else if (oop > (quot (oop+func+other) 2))
-                                                                            then "User is an oop Programmer"
-                                                                        else
-                                                                            "User is neither a functional nor oop Programmer"
---determinePType func oop other languageKey ((repo, uName, date):xs) =    if(isFunc repo)
-                                                                         --   then determinePType
+determinePType func oop other [] =                              if (func > (quot (oop+func+other) 2))
+                                                                    then "User is a functional Programmer"
+                                                                else if (oop > (quot (oop+func+other) 2))
+                                                                    then "User is an oop Programmer"
+                                                                else
+                                                                    "User is neither a functional nor oop Programmer"
+determinePType func oop other ((repo, lang, uName, date):xs) =  if(isFunc lang)
+                                                                    then determinePType (func+1) oop other xs
+                                                                else if (isOop lang)
+                                                                    then determinePType func (oop+1) other xs
+                                                                else
+                                                                    determinePType func oop (other+1) xs
 
 shortenedUC :: [(String,String,String,String)] -> [(String,String,String,String)]
-shortenedUC list = Prelude.take (quot (Prelude.length list) 5) list
+shortenedUC list = Prelude.take (quot (Prelude.length list) 4) list
+
+isFunc :: String -> Bool
+isFunc lang = do
+                let funcLang = ["Haskell","Clean","Scala","Erlang","Clojure","SML","F#","Scheme","XSLT","SQL","Mathematica","Elixir","Elm","PureScript","Racket","Reason","Swift","Nix","Emacs","Lua","TSQL"]
+                if (elem lang funcLang)
+                    then True
+                else
+                    False
+
+isOop :: String -> Bool
+isOop lang = do
+    let oopLang = ["Python","C","C++","Java","JavaScript","Go","Ruby","C#","R","PHP","Visual Basic .Net","Perl","Dart","Kotlin","CommonLisp","MATLAB","Samlltalk","Groovy","CoffeeScript","Powershell", "Objective-C"]
+    if (elem lang oopLang)
+        then True
+    else
+        False
