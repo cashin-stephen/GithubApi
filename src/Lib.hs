@@ -26,7 +26,7 @@ import           Network.HTTP.Client          (newManager)
 import           Network.HTTP.Client.TLS      (tlsManagerSettings)
 import           System.Environment           (getArgs)
 import Data.Text hiding (map,intercalate, groupBy, concat)
-import Data.List (intercalate, groupBy, sortBy)
+import Data.List (intercalate, groupBy, sortBy, sort)
 import Data.Either
 import           Servant.API                (BasicAuthData (..))
 import Data.ByteString.UTF8 (fromString)
@@ -81,16 +81,19 @@ interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
 
 getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [(String,String,String)] -> [String] -> IO ()
 getUserCommits _ _ name acc [] = do 
-                                --print acc
-                                let finalAcc = removeAlien name [] acc
-                                print finalAcc
+                                    --print acc
+                                    let userCommits = removeNonUserCommits name [] acc
+                                    let sorteduserCommits = sortBy (\(_,_,a) (_,_,b) -> compare a b) userCommits
+                                    let earlyUserCommits = shortenedUC sorteduserCommits
+                                    --let pType = determinePType
+                                    print earlyUserCommits
+                                    
 getUserCommits auth env name acc (x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack x)) =<< env) >>= \case
                                 Left err -> do
                                     putStrLn $ "Problem getting commits: " ++ show err
                                 Right commits -> do
                                     let authorList =  map (\xx -> showCommit xx x) commits
                                     let newAcc = acc++authorList
-                                    let sortedAuthorList = sortBy (\(_,_,a) (_,_,b) -> compare a b) authorList
                                     getUserCommits auth env name newAcc xs
 
                                 
@@ -103,10 +106,16 @@ showCommitA (GH.CommitA author) repo = showAuthor author repo
 showAuthor :: GH.Author -> String -> (String,String,String)
 showAuthor (GH.Author name email date) repo = (repo, unpack name, unpack date)
 
-removeAlien :: Text -> [(String,String,String)] -> [(String,String,String)] -> [(String,String,String)]
-removeAlien _ acc [] = acc
-removeAlien name acc ((repo, uName, date):xs) = do
+removeNonUserCommits :: Text -> [(String,String,String)] -> [(String,String,String)] -> [(String,String,String)]
+removeNonUserCommits _ acc [] = acc
+removeNonUserCommits name acc ((repo, uName, date):xs) = do
                                                     if (unpack name) == uName
-                                                        then let newAcc = acc++[(repo,uName,date)] in removeAlien name newAcc xs
+                                                        then let newAcc = acc++[(repo,uName,date)] in removeNonUserCommits name newAcc xs
                                                     else
-                                                        removeAlien name acc xs
+                                                        removeNonUserCommits name acc xs
+
+--determinePType :: [(String,String,String)] -> String
+--determinePType x = do
+
+shortenedUC :: [(String,String,String)] -> [(String,String,String)]
+shortenedUC list = Prelude.take (quot (Prelude.length list) 5) list
