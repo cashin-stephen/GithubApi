@@ -31,20 +31,20 @@ data CommitA =
   CommitA { author :: Author} deriving (Generic, FromJSON, Show)
 
 data User =
-  GitHubUser { login :: Text
-             , name  :: Maybe Text
-             , email :: Maybe Text
-             } deriving (Generic, FromJSON, Show)
+  User    { login :: Text
+          , name  :: Maybe Text
+          , email :: Maybe Text
+          } deriving (Generic, FromJSON, Show)
 
 data Repo =
-  Repo { name :: Text
-             , language :: Text
-             } deriving (Generic, FromJSON, Show)
+  Repo    { name :: Text
+          , language :: Text
+          } deriving (Generic, FromJSON, Show)
 
 data Commit = 
-  Commit { sha :: Text
+  Commit  { sha :: Text
           , commit :: CommitA
-              } deriving (Generic, FromJSON, Show)
+          } deriving (Generic, FromJSON, Show)
 
 type GitHubAPI = "users" :> Header "user-agent" UA 
                          :> BasicAuth "github" Int

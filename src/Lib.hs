@@ -63,11 +63,11 @@ githubCall auth name =
                     let rLanguages = Prelude.unwords (map (\(GH.Repo _ l) -> unpack l) repos)
                     let listrNames = Prelude.words rNames
                     let listrLanguages = Prelude.words rLanguages
-                    let repoList = interleave listrNames listrLanguages
-                    print repoList
+                    let languageKey = interleave listrNames listrLanguages
+                    print languageKey
 
                     --get User Commits for each of their Repos
-                    getUserCommits auth env name [] listrNames
+                    getUserCommits auth env name [] languageKey 
                         
 
 --Establishing the environemnt as Servant invoking the API in the IO space
@@ -79,43 +79,50 @@ githubCall auth name =
 interleave :: [a] -> [a] -> [a]
 interleave xs ys = concat (Prelude.zipWith (\x y -> [x]++[y]) xs ys)
 
-getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [(String,String,String)] -> [String] -> IO ()
+getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [(String,String,String,String)] -> [String] -> IO ()
 getUserCommits _ _ name acc [] = do 
-                                    --print acc
-                                    let userCommits = removeNonUserCommits name [] acc
-                                    let sorteduserCommits = sortBy (\(_,_,a) (_,_,b) -> compare a b) userCommits
-                                    let earlyUserCommits = shortenedUC sorteduserCommits
-                                    --let pType = determinePType
-                                    print earlyUserCommits
+                                                --print acc
+                                                let userCommits = removeNonUserCommits name [] acc
+                                                let sorteduserCommits = sortBy (\(_,_,_,a) (_,_,_,b) -> compare a b) userCommits
+                                                let earlyUserCommits = shortenedUC sorteduserCommits
+                                                let pType = determinePType 0 0 0 earlyUserCommits
+                                                print earlyUserCommits
                                     
-getUserCommits auth env name acc (x:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack x)) =<< env) >>= \case
-                                Left err -> do
-                                    putStrLn $ "Problem getting commits: " ++ show err
-                                Right commits -> do
-                                    let authorList =  map (\xx -> showCommit xx x) commits
-                                    let newAcc = acc++authorList
-                                    getUserCommits auth env name newAcc xs
+getUserCommits auth env name acc (repo:lang:xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack repo)) =<< env) >>= \case
+                                                Left err -> do
+                                                    putStrLn $ "Problem getting commits: " ++ show err
+                                                Right commits -> do
+                                                    let authorList =  map (\xx -> showCommit xx repo lang) commits
+                                                    let newAcc = acc++authorList
+                                                    getUserCommits auth env name newAcc xs
 
                                 
-showCommit ::  GH.Commit -> String -> (String,String,String)
-showCommit (GH.Commit sha commitA) repo = showCommitA commitA repo
+showCommit ::  GH.Commit -> String -> String -> (String,String,String,String)
+showCommit (GH.Commit sha commitA) repo lang = showCommitA commitA repo lang
 
-showCommitA :: GH.CommitA -> String -> (String,String,String)
-showCommitA (GH.CommitA author) repo = showAuthor author repo
+showCommitA :: GH.CommitA -> String -> String -> (String,String,String,String)
+showCommitA (GH.CommitA author) repo lang = showAuthor author repo lang
 
-showAuthor :: GH.Author -> String -> (String,String,String)
-showAuthor (GH.Author name email date) repo = (repo, unpack name, unpack date)
+showAuthor :: GH.Author -> String -> String -> (String,String,String,String)
+showAuthor (GH.Author name email date) repo lang = (repo, lang, unpack name, unpack date)
 
-removeNonUserCommits :: Text -> [(String,String,String)] -> [(String,String,String)] -> [(String,String,String)]
+removeNonUserCommits :: Text -> [(String,String,String,String)] -> [(String,String,String,String)] -> [(String,String,String,String)]
 removeNonUserCommits _ acc [] = acc
-removeNonUserCommits name acc ((repo, uName, date):xs) = do
-                                                    if (unpack name) == uName
-                                                        then let newAcc = acc++[(repo,uName,date)] in removeNonUserCommits name newAcc xs
-                                                    else
-                                                        removeNonUserCommits name acc xs
+removeNonUserCommits name acc ((repo, lang, uName, date):xs) = do
+                                                                if (unpack name) == uName
+                                                                    then let newAcc = acc++[(repo,lang, uName,date)] in removeNonUserCommits name newAcc xs
+                                                                else
+                                                                    removeNonUserCommits name acc xs
 
---determinePType :: [(String,String,String)] -> String
---determinePType x = do
+determinePType :: Int -> Int -> Int -> [(String,String,String,String)] -> String
+determinePType func oop other [] =                          if (func > (quot (oop+func+other) 2))
+                                                                            then "User is a functional Programmer"
+                                                                        else if (oop > (quot (oop+func+other) 2))
+                                                                            then "User is an oop Programmer"
+                                                                        else
+                                                                            "User is neither a functional nor oop Programmer"
+--determinePType func oop other languageKey ((repo, uName, date):xs) =    if(isFunc repo)
+                                                                         --   then determinePType
 
-shortenedUC :: [(String,String,String)] -> [(String,String,String)]
+shortenedUC :: [(String,String,String,String)] -> [(String,String,String,String)]
 shortenedUC list = Prelude.take (quot (Prelude.length list) 5) list
