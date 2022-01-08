@@ -229,6 +229,4 @@ d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-
             .y(function(d) { return y(+d.n); })
             (d.values)
         })
-
 })
-
