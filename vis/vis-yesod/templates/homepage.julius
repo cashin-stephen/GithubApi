@@ -122,17 +122,17 @@ var pieChart = d3.select("#pieChart")
   .append("g")
     .attr("transform", "translate(" + pWidth / 2 + "," + pHeight / 2 + ")");
 
-//d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/pie.csv", function(pData) {
+d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/pie.csv", function(pData) {
 
 // Create dummy data
-var pData = {Bill: 9,
+/*var pData = {Bill: 9,
       Ben:  20,
       John: 30,
       Jane: 8,
       Tim:  12,
       Sam:  20
      }
-
+*/
 // set the color scale
 var pColor = d3.scaleOrdinal()
   .domain(pData)
