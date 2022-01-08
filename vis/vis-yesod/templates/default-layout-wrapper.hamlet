@@ -28,6 +28,7 @@ $newline never
     \<!-- adding D3 stuff -->
     <script src="https://d3js.org/d3.v4.js">
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js">
+    <script src="https://d3js.org/d3.v4.min.js">
 
     <script>
       /* The `defaultCsrfMiddleware` Middleware added in Foundation.hs adds a CSRF token to the request cookies. */

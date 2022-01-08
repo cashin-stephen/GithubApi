@@ -1,2 +1,6 @@
 <h1> This is a test of stephen's homepage
+<h2> Pie Chart
+<div id="pieChart">
+<h2> Bar Chart 1
 <div id="my_dataviz">
+<h2> Bar Chart 2
