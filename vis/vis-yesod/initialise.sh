@@ -1,1 +1,1 @@
-stack install yesod-bin --install-ghc
+stack install yesod-bin --system-ghc
