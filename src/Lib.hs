@@ -51,6 +51,7 @@ someFunc = do
             print line
             githubCall auth line
             formatTypeCount "cPie.csv" "typeCount.csv"
+            formatLang "cBar.csv" "totalLang.csv"
 
     else
         do
@@ -95,7 +96,7 @@ instance GithubApi String where
 
                         --get User Commits for each of their Repos
                         getUserCommits auth env (pack name) [] languageKey
-                       
+
 
         --Establishing the environemnt as Servant invoking the API in the IO space                
         where env = do
@@ -124,7 +125,7 @@ getUserCommits _ _ name acc [] = do
                                                 appendFile "cPie.csv" (pType++"\n")
                                                 print earlyUserCommits
                                                 print pType
-                                                
+
 
 getUserCommits auth env name acc ((repo,lang):xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack repo)) =<< env) >>= \case
                                                 Left err -> do
@@ -156,8 +157,9 @@ exportUserCommits :: [(String,Maybe Text,String,String)] -> IO ()
 exportUserCommits [] = putStrLn ""
 exportUserCommits ((repo,Nothing,uName,date):xs) = exportUserCommits xs
 exportUserCommits ((repo,Just lang,uName,date):xs) = do
-                                                    appendFile "cBar.csv" (uName ++ ","++ unpack lang ++"\n")
+                                                    appendFile "cBar.csv" (getLangType lang ++ ","++ unpack lang ++"\n")
                                                     exportUserCommits xs
+
 
 determinePType :: Int -> Int -> Int -> [(String,Maybe Text,String,String)] -> String
 determinePType func oop other []
@@ -172,17 +174,38 @@ determinePType func oop other ((repo, lang, uName, date):xs)
 shortenedUC :: [(String,Maybe Text,String,String)] -> [(String,Maybe Text,String,String)]
 shortenedUC list = Prelude.take (quot (Prelude.length list) 4) list
 
-isFunc :: Maybe Text -> Bool
-isFunc Nothing = False
-isFunc (Just lang) = do
+getLangType ::  Text -> String
+getLangType lang
+    | isFunc lang = "functional"
+    | isOop lang = "oop"
+
+class IsFunc a where
+    isFunc :: a -> Bool
+
+instance IsFunc (Maybe Text) where
+    isFunc Nothing = False
+    isFunc (Just lang) = do
+                    let funcLang = ["Haskell","Clean","Scala","Erlang","Clojure","SML","F#","Scheme","XSLT","SQL","Mathematica","Elixir","Elm","PureScript","Racket","Reason","Swift","Nix","Emacs","Lua","TSQL","Emacs Lisp"]
+                    unpack lang `elem` funcLang
+
+instance IsFunc Text where
+    isFunc lang = do
                 let funcLang = ["Haskell","Clean","Scala","Erlang","Clojure","SML","F#","Scheme","XSLT","SQL","Mathematica","Elixir","Elm","PureScript","Racket","Reason","Swift","Nix","Emacs","Lua","TSQL","Emacs Lisp"]
                 unpack lang `elem` funcLang
 
-isOop :: Maybe Text -> Bool
-isOop Nothing = False
-isOop (Just lang) = do
-    let oopLang = ["Python","C","C++","Java","JavaScript","Go","Ruby","C#","R","PHP","Visual Basic .Net","Perl","Dart","Kotlin","CommonLisp","MATLAB","Samlltalk","Groovy","CoffeeScript","Powershell", "Objective-C"]
-    unpack lang `elem` oopLang
+class IsOop a where
+    isOop :: a -> Bool
+
+instance IsOop (Maybe Text) where
+    isOop Nothing = False
+    isOop (Just lang) = do
+        let oopLang = ["Python","C","C++","Java","JavaScript","Go","Ruby","C#","R","PHP","Visual Basic .Net","Perl","Dart","Kotlin","CommonLisp","MATLAB","Samlltalk","Groovy","CoffeeScript","Powershell", "Objective-C"]
+        unpack lang `elem` oopLang
+
+instance IsOop Text where
+    isOop lang = do
+        let oopLang = ["Python","C","C++","Java","JavaScript","Go","Ruby","C#","R","PHP","Visual Basic .Net","Perl","Dart","Kotlin","CommonLisp","MATLAB","Samlltalk","Groovy","CoffeeScript","Powershell", "Objective-C"]
+        unpack lang `elem` oopLang
 
 formatTypeCount :: FilePath -> FilePath -> IO ()
 formatTypeCount input output = do
@@ -204,7 +227,7 @@ countTypes oopC funcC otherC (x:xs)
     | x == "oop" = countTypes (oopC+1) funcC otherC xs
     | x == "functional" = countTypes oopC (funcC+1) otherC xs
     | x == "other" = countTypes oopC funcC (otherC+1) xs
-    
+
 first :: (a,a,a) -> a
 first (x,_,_) = x
 
@@ -213,3 +236,49 @@ second (_,x,_) = x
 
 third :: (a,a,a) -> a
 third (_,_,x) = x
+
+formatLang :: FilePath -> FilePath -> IO()
+formatLang input output = do
+                            i <- openFile input ReadMode
+                            contents <- hGetContents i
+                            let lData = Prelude.lines contents
+                            let tlData = listToText [] lData
+                            let flatData = flattenList [] tlData
+                            let oopC = 0
+                            let funcC =0
+                            --print flatData
+                            let langCounts = countLangs [] [] oopC funcC (listToString [] flatData)
+                            print langCounts
+
+listToText :: [Text] -> [String] -> [Text]
+listToText = Prelude.foldl (\ t x -> t ++ [pack x])
+
+listToString :: [String] -> [Text] -> [String]
+listToString = Prelude.foldl (\ t x -> t ++ [unpack x])
+
+flattenList :: [Text] -> [Text] -> [Text]
+flattenList = Prelude.foldl (\ fList x -> fList ++ splitOn "," x)
+
+countLangs :: [String] -> [String] -> Int -> Int -> [String] -> (Int,Int)
+countLangs _ _ oopC funcC [] = (oopC,funcC)
+countLangs uOop uFunc oopC funcC (x:y:xs) = do
+                                    if x == "oop"
+                                        then 
+                                            if y `elem` uOop
+                                                then
+                                                    countLangs uOop uFunc oopC funcC xs
+                                            else
+                                                do
+                                                    let newuOop = uOop ++ [y]
+                                                    countLangs newuOop uFunc (oopC+1) funcC xs
+                                    else if x == "functional"
+                                        then
+                                            if y `elem` uFunc
+                                                then
+                                                    countLangs uOop uFunc oopC funcC xs
+                                            else
+                                                do
+                                                    let newuFunc = uFunc ++ [y]
+                                                    countLangs uOop newuFunc oopC (funcC+1) xs 
+                                    else
+                                        countLangs uOop uFunc oopC funcC xs
