@@ -41,6 +41,7 @@ someFunc = do
     writeFile "cPie.csv" ""
     writeFile "cBar.csv" ""
     writeFile "typeCount.csv" ""
+    writeFile "totalLang.csv" ""
     putStrLn "about to call"
     (uName:user:token:_) <- getArgs
     let auth = BasicAuthData (fromString user) (fromString token)
@@ -58,6 +59,7 @@ someFunc = do
             print "not file"
             githubCall auth uName
             formatTypeCount "cPie.csv" "typeCount.csv"
+            formatLang "cBar.csv" "totalLang.csv"
 
 readLines :: FilePath -> IO [String]
 readLines = fmap Prelude.lines . readFile
@@ -83,6 +85,7 @@ instance GithubApi String where
                 putStrLn $ "error has occured: " ++ show err
             Right res -> do
                 putStrLn $ "Success! " ++ show res
+                let user = getUser res
 
                 --get user repos
                 (SC.runClientM (GH.getRepos (Just "haskell-app") auth (pack name) ) =<< env) >>= \case
@@ -95,7 +98,7 @@ instance GithubApi String where
                         let languageKey = interleave [] listrNames rLanguages
 
                         --get User Commits for each of their Repos
-                        getUserCommits auth env (pack name) [] languageKey
+                        getUserCommits auth env user (pack name) [] languageKey
 
 
         --Establishing the environemnt as Servant invoking the API in the IO space                
@@ -104,7 +107,9 @@ instance GithubApi String where
                 return $ SC.mkClientEnv manager (SC.BaseUrl SC.Http "api.github.com" 80 "")
 
 
-
+getUser :: GH.User -> Maybe Text
+getUser (GH.User _ Nothing _) = Nothing
+getUser (GH.User _ n _) = n
 
 interleave :: [(a,b)] -> [a] -> [b] -> [(a,b)]
 interleave list _ [] =  list
@@ -115,9 +120,9 @@ getLang ::GH.Repo -> Maybe Text
 getLang (GH.Repo _ Nothing) = Nothing
 getLang (GH.Repo _ l) = l
 
-getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Text -> [(String,Maybe Text,String,String)] -> [(String,Maybe Text)] -> IO ()
-getUserCommits _ _ name acc [] = do
-                                                let userCommits = removeNonUserCommits name [] acc
+getUserCommits :: BasicAuthData -> IO SC.ClientEnv -> Maybe Text -> Text -> [(String,Maybe Text,String,String)] -> [(String,Maybe Text)] -> IO ()
+getUserCommits _ _ user name acc [] = do
+                                                let userCommits = removeNonUserCommits user name [] acc
                                                 exportUserCommits userCommits
                                                 let sorteduserCommits = sortBy (\(_,_,_,a) (_,_,_,b) -> compare a b) userCommits
                                                 let earlyUserCommits = shortenedUC sorteduserCommits
@@ -127,13 +132,13 @@ getUserCommits _ _ name acc [] = do
                                                 print pType
 
 
-getUserCommits auth env name acc ((repo,lang):xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack repo)) =<< env) >>= \case
+getUserCommits auth env user name acc ((repo,lang):xs) = (SC.runClientM (GH.getCommits (Just "haskell-app") auth name (pack repo)) =<< env) >>= \case
                                                 Left err -> do
                                                     putStrLn $ "Problem getting commits: " ++ show err
                                                 Right commits -> do
                                                     let authorList =  map (\xx -> showCommit xx repo lang) commits
                                                     let newAcc = acc++authorList
-                                                    getUserCommits auth env name newAcc xs
+                                                    getUserCommits auth env user name newAcc xs
 
 
 showCommit ::  GH.Commit -> String -> Maybe Text -> (String,Maybe Text,String,String)
@@ -145,13 +150,18 @@ showCommitA (GH.CommitA author) = showAuthor author
 showAuthor :: GH.Author -> String -> Maybe Text -> (String,Maybe Text,String,String)
 showAuthor (GH.Author name email date) repo lang = (repo, lang, unpack name, unpack date)
 
-removeNonUserCommits :: Text -> [(String,Maybe Text,String,String)] -> [(String,Maybe Text,String,String)] -> [(String,Maybe Text,String,String)]
-removeNonUserCommits _ acc [] = acc
-removeNonUserCommits name acc ((repo, lang, uName, date):xs) =
+removeNonUserCommits :: Maybe Text -> Text -> [(String,Maybe Text,String,String)] -> [(String,Maybe Text,String,String)] -> [(String,Maybe Text,String,String)]
+removeNonUserCommits _ _ acc [] = acc
+removeNonUserCommits Nothing name acc ((repo, lang, uName, date):xs) =
                                                                 if unpack name == uName
-                                                                    then let newAcc = acc++[(repo,lang, uName,date)] in removeNonUserCommits name newAcc xs
+                                                                    then let newAcc = acc++[(repo,lang, uName,date)] in removeNonUserCommits Nothing name newAcc xs
                                                                 else
-                                                                    removeNonUserCommits name acc xs
+                                                                    removeNonUserCommits Nothing name acc xs
+removeNonUserCommits (Just user) name acc ((repo, lang, uName, date):xs) =
+                                                                if (unpack name == uName) || (unpack user == uName)
+                                                                    then let newAcc = acc++[(repo,lang, uName,date)] in removeNonUserCommits (Just user) name newAcc xs
+                                                                else
+                                                                    removeNonUserCommits (Just user) name acc xs
 
 exportUserCommits :: [(String,Maybe Text,String,String)] -> IO ()
 exportUserCommits [] = putStrLn ""
@@ -178,6 +188,7 @@ getLangType ::  Text -> String
 getLangType lang
     | isFunc lang = "functional"
     | isOop lang = "oop"
+    | otherwise = ""
 
 class IsFunc a where
     isFunc :: a -> Bool
@@ -199,12 +210,12 @@ class IsOop a where
 instance IsOop (Maybe Text) where
     isOop Nothing = False
     isOop (Just lang) = do
-        let oopLang = ["Python","C","C++","Java","JavaScript","Go","Ruby","C#","R","PHP","Visual Basic .Net","Perl","Dart","Kotlin","CommonLisp","MATLAB","Samlltalk","Groovy","CoffeeScript","Powershell", "Objective-C"]
+        let oopLang = ["Python","C","C++","Java","JavaScript","Go","Ruby","C#","R","PHP","Visual Basic .Net","Perl","Dart","Kotlin","CommonLisp","MATLAB","Samlltalk","Groovy","CoffeeScript","Powershell", "Objective-C","ActionScript"]
         unpack lang `elem` oopLang
 
 instance IsOop Text where
     isOop lang = do
-        let oopLang = ["Python","C","C++","Java","JavaScript","Go","Ruby","C#","R","PHP","Visual Basic .Net","Perl","Dart","Kotlin","CommonLisp","MATLAB","Samlltalk","Groovy","CoffeeScript","Powershell", "Objective-C"]
+        let oopLang = ["Python","C","C++","Java","JavaScript","Go","Ruby","C#","R","PHP","Visual Basic .Net","Perl","Dart","Kotlin","CommonLisp","MATLAB","Samlltalk","Groovy","CoffeeScript","Powershell", "Objective-C","ActionScript"]
         unpack lang `elem` oopLang
 
 formatTypeCount :: FilePath -> FilePath -> IO ()
@@ -217,9 +228,9 @@ formatTypeCount input output = do
                                 let otherC = 0
                                 let typeCount = countTypes oopC funcC otherC lData
                                 appendFile output ("type,n" ++ "\n" ++
-                                    "oop," ++ show (first typeCount) ++ "\n" ++
-                                    "functional," ++ show (second typeCount) ++ "\n" ++
-                                    "other," ++ show (third typeCount))
+                                    "oop," ++ show (first3 typeCount) ++ "\n" ++
+                                    "functional," ++ show (second3 typeCount) ++ "\n" ++
+                                    "other," ++ show (third3 typeCount))
 
 countTypes :: Int -> Int -> Int -> [String] -> (Int,Int,Int)
 countTypes oopC funcC otherC [] = (oopC,funcC,otherC)
@@ -228,14 +239,14 @@ countTypes oopC funcC otherC (x:xs)
     | x == "functional" = countTypes oopC (funcC+1) otherC xs
     | x == "other" = countTypes oopC funcC (otherC+1) xs
 
-first :: (a,a,a) -> a
-first (x,_,_) = x
+first3 :: (a,a,a) -> a
+first3 (x,_,_) = x
 
-second :: (a,a,a) -> a
-second (_,x,_) = x
+second3 :: (a,a,a) -> a
+second3 (_,x,_) = x
 
-third :: (a,a,a) -> a
-third (_,_,x) = x
+third3 :: (a,a,a) -> a
+third3 (_,_,x) = x
 
 formatLang :: FilePath -> FilePath -> IO()
 formatLang input output = do
@@ -246,9 +257,17 @@ formatLang input output = do
                             let flatData = flattenList [] tlData
                             let oopC = 0
                             let funcC =0
-                            --print flatData
                             let langCounts = countLangs [] [] oopC funcC (listToString [] flatData)
                             print langCounts
+                            appendFile output ("type,lang" ++ "\n" ++
+                                    "oop," ++ show ((first2 langCounts)-1) ++ "\n" ++
+                                    "functional," ++ show ((second2 langCounts)-1) ++ "\n")
+
+first2 :: (a,a) -> a
+first2 (x,_) = x
+
+second2 :: (a,a) -> a
+second2 (_,x) = x
 
 listToText :: [Text] -> [String] -> [Text]
 listToText = Prelude.foldl (\ t x -> t ++ [pack x])
