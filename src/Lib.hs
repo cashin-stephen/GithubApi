@@ -26,9 +26,9 @@ import qualified Servant.Client               as SC
 import           Network.HTTP.Client          (newManager)
 import           Network.HTTP.Client.TLS      (tlsManagerSettings)
 import           System.Environment           (getArgs)
-import Data.Text hiding (map,intercalate, groupBy, concat)
-import Data.List (intercalate, groupBy, sortBy, sort)
-import Data.List.Split
+import Data.Text as DT hiding (map,intercalate, groupBy, concat)
+import Data.List (intercalate, groupBy, sortBy, sort, nub)
+import Data.List.Split as DS
 import Data.Either
 import           Servant.API                (BasicAuthData (..))
 import Data.ByteString.UTF8 (fromString)
@@ -37,6 +37,7 @@ import System.IO
 
 --highest level Function to invoke all functionality with some explanatory IO
 --takes a name parameter to select a user
+
 someFunc :: IO ()
 someFunc = do
     writeFile "cPie.csv" ""
@@ -44,6 +45,8 @@ someFunc = do
     writeFile "typeCount.csv" ""
     writeFile "totalLang.csv" ""
     writeFile "totalfLang.csv" ""
+    writeFile "yearLang.csv" ""
+    writeFile "yearfLang.csv" ""
     putStrLn "about to call"
     (uName:user:token:_) <- getArgs
     let auth = BasicAuthData (fromString user) (fromString token)
@@ -54,14 +57,14 @@ someFunc = do
             print line
             githubCall auth line
             formatTypeCount "cPie.csv" "typeCount.csv"
-            formatLang "cBar.csv" "totalLang.csv" "totalfLang.csv"
+            formatLang "cBar.csv" "totalLang.csv" "totalfLang.csv" "yearLang.csv" "yearfLang.csv"
 
     else
         do
             print "not file"
             githubCall auth uName
             formatTypeCount "cPie.csv" "typeCount.csv"
-            formatLang "cBar.csv" "totalLang.csv" "totalfLang.csv"
+            formatLang "cBar.csv" "totalLang.csv" "totalfLang.csv" "yearLang.csv" "yearfLang.csv"
 
 readLines :: FilePath -> IO [String]
 readLines = fmap Prelude.lines . readFile
@@ -131,7 +134,7 @@ getUserCommits _ _ user name acc [] = do
                                                 let pType = determinePType 0 0 0 earlyUserCommits
                                                 exportUserCommits pType userCommits
                                                 appendFile "cPie.csv" (pType++"\n")
-                                                print earlyUserCommits
+                                                --print earlyUserCommits
                                                 print pType
 
 
@@ -170,7 +173,7 @@ exportUserCommits :: String -> [(String,Maybe Text,String,String)] -> IO ()
 exportUserCommits _ [] = appendFile "cBar.csv" ("---" ++"\n")
 exportUserCommits pType ((repo,Nothing,uName,date):xs) = exportUserCommits pType xs
 exportUserCommits pType ((repo,Just lang,uName,date):xs) = do
-                                                    appendFile "cBar.csv" (pType ++ ","++ unpack lang ++"\n")
+                                                    appendFile "cBar.csv" (pType ++ ","++ unpack lang ++ "," ++ Prelude.take 4 date ++"\n" )
                                                     exportUserCommits pType xs
 
 
@@ -204,8 +207,8 @@ instance IsFunc (Maybe Text) where
 
 instance IsFunc Text where
     isFunc lang = do
-                let funcLang = ["Haskell","Clean","Scala","Erlang","Clojure","SML","F#","Scheme","XSLT","SQL","Mathematica","Elixir","Elm","PureScript","Racket","Reason","Swift","Nix","Emacs","Lua","TSQL","Emacs Lisp","R"]
-                unpack lang `elem` funcLang
+                    let funcLang = ["Haskell","Clean","Scala","Erlang","Clojure","SML","F#","Scheme","XSLT","SQL","Mathematica","Elixir","Elm","PureScript","Racket","Reason","Swift","Nix","Emacs","Lua","TSQL","Emacs Lisp","R"]
+                    unpack lang `elem` funcLang
 
 class IsOop a where
     isOop :: a -> Bool
@@ -251,16 +254,23 @@ second3 (_,x,_) = x
 third3 :: (a,a,a) -> a
 third3 (_,_,x) = x
 
-formatLang :: FilePath -> FilePath -> FilePath -> IO()
-formatLang input output foutput = do
+formatLang :: FilePath -> FilePath -> FilePath -> FilePath -> FilePath -> IO()
+formatLang input output foutput youtput fyoutput = do
                             i <- openFile input ReadMode
                             contents <- hGetContents i
-                            let lData = Data.List.Split.splitOn ["---"] (Prelude.lines contents)
+                            let lData = DS.splitOn ["---"] (Prelude.lines contents)
                             let tlData = doubleListToText [] lData
+                            --print lData
+                            let tupData = sortAll [] (tuplifyAll [] tlData)
+                            --print tupData
                             let flatData = doubleFlattenList [] tlData
-                            let langCounts = langCountAll (0,0,0,0) (doubleListToString [] flatData)
+                            --print flatData
+                            let activeYears = sort (nub (getActiveYears [] (concat tupData)))
+                            print activeYears
+                            let langCounts = langCountAll (0,0,0,0) (doubleListToString [] flatData) Nothing
                             print langCounts
-                            let flangCounts = fLangCountAll (0,0,0,0) (doubleListToString [] flatData)
+                            let flangCounts = fLangCountAll (0,0,0,0) (doubleListToString [] flatData) Nothing
+                            
                             print flangCounts
                             appendFile output ("type,lang" ++ "\n" ++
                                 "oop," ++ show (first4 langCounts/third4 langCounts) ++ "\n" ++
@@ -269,71 +279,100 @@ formatLang input output foutput = do
                                 "oop," ++ show (first4 flangCounts/third4 flangCounts) ++ "\n" ++
                                 "functional," ++ show (second4 flangCounts/fourth4 flangCounts) ++ "\n")
 
-fLangCountAll :: (Float,Float,Float,Float) -> [[String]] -> (Float,Float,Float,Float)
-fLangCountAll (oopC, funcC,oopT,funcT) [] = (oopC,funcC,oopT,funcT)
-fLangCountAll (oopC, funcC,oopT,funcT) (x:xs) = add4Tuple (countfLangs [] [] oopC funcC oopT funcT x) (fLangCountAll (oopC, funcC,oopT,funcT) xs)
+--countYearLangs :: [String] -> [(String,Float,Float,Float,Float)] -> [String] -> [(String,Float,Float,Float,Float)]
 
-countfLangs :: [String] -> [String] -> Float -> Float -> Float -> Float -> [String] -> (Float,Float,Float,Float)
-countfLangs uOop uFunc oopC funcC oopT funcT []
-    | Prelude.null uOop && Prelude.null uFunc = (oopC,funcC,oopT,funcT)
-    | Prelude.null uOop = (oopC,funcC,oopT,funcT+1)
-    | Prelude.null uFunc = (oopC,funcC,oopT+1,funcT)
+sortAll :: [[(Text,Text,Text)]] -> [[(Text,Text,Text)]] -> [[(Text,Text,Text)]]
+sortAll sortedTup [] = sortedTup
+sortAll sortedTup (x:xs) = sortedTup++[sortLTup x]++sortAll sortedTup xs
+
+sortLTup :: Ord a => [(a,a,a)] -> [(a,a,a)]
+sortLTup = sortBy (\(_,_,a) (_,_,b) -> compare a b)
+
+tuplifyAll :: [[(Text,Text,Text)]] -> [[Text]] -> [[(Text,Text,Text)]]
+tuplifyAll tup [] = tup
+tuplifyAll tup (x:xs) = tup++[tuplify [] (splitText [] x)]++tuplifyAll tup xs
+
+tuplify :: [(Text,Text,Text)] -> [Text] -> [(Text,Text,Text)]
+tuplify tup [] = tup
+tuplify tup (x:y:z:xs) = tup++[(x,y,z)]++tuplify tup xs
+
+splitText ::[Text] -> [Text] -> [Text]
+splitText list [] = list
+splitText list (x:xs) = list++DT.splitOn "," x++splitText list xs
+
+getActiveYears :: [Text] -> [(Text,Text,Text)] -> [Text]
+getActiveYears acc [] = acc
+getActiveYears acc ((_,_,year):xs) = acc++[year]++getActiveYears acc xs
+
+fLangCountAll :: (Float,Float,Float,Float) -> [[String]] -> Maybe Bool -> (Float,Float,Float,Float) 
+fLangCountAll tup [] _ = tup
+fLangCountAll (oopC, funcC,oopT,funcT) (x:xs) typeFlag = add4Tuple (countfLangs [] [] oopC funcC oopT funcT x typeFlag) (fLangCountAll (oopC, funcC,oopT,funcT) xs typeFlag)
+
+countfLangs :: [String] -> [String] -> Float -> Float -> Float -> Float -> [String] ->  Maybe Bool -> (Float,Float,Float,Float)
+countfLangs uOop uFunc oopC funcC oopT funcT [] typeFlag
+    | typeFlag == Nothing = (oopC,funcC,oopT,funcT)
+    | typeFlag == Just False = (oopC,funcC,oopT,funcT+1)
+    | typeFlag == Just True = (oopC,funcC,oopT+1,funcT)
     | otherwise = (oopC,funcC,oopT,funcT)
-countfLangs uOop uFunc oopC funcC oopT funcT (x:y:xs)
+countfLangs uOop uFunc oopC funcC oopT funcT (x:y:_:xs) typeFlag
   | x == "oop" =
         if y `elem` uOop
             then
-                countfLangs uOop uFunc oopC funcC oopT funcT xs
+                countfLangs uOop uFunc oopC funcC oopT funcT xs typeFlag
         else
             do
                 let newuOop = uOop ++ [y]
+                let newTypeFlag = Just True
                 if not (isOop (pack y))
                     then
-                        countfLangs newuOop uFunc (oopC+1) funcC oopT funcT xs
+                        countfLangs newuOop uFunc (oopC+1) funcC oopT funcT xs newTypeFlag
                     else
-                        countfLangs newuOop uFunc oopC funcC oopT funcT xs
+                        countfLangs newuOop uFunc oopC funcC oopT funcT xs newTypeFlag
   | x == "functional" =
         if y `elem` uFunc
             then
-                countfLangs uOop uFunc oopC funcC oopT funcT xs
+                countfLangs uOop uFunc oopC funcC oopT funcT xs typeFlag
         else
             do
                 let newuFunc = uFunc ++ [y]
+                let newTypeFlag = Just False
                 if not (isFunc (pack y))
                     then
-                        countfLangs uOop newuFunc oopC (funcC+1) oopT funcT xs
+                        countfLangs uOop newuFunc oopC (funcC+1) oopT funcT xs newTypeFlag
                     else
-                        countfLangs uOop newuFunc oopC funcC oopT funcT xs
-  | otherwise = countLangs uOop uFunc oopC funcC oopT funcT xs
+                        countfLangs uOop newuFunc oopC funcC oopT funcT xs newTypeFlag
+  | otherwise = countfLangs uOop uFunc oopC funcC oopT funcT xs typeFlag
 
-langCountAll :: (Float,Float,Float,Float) -> [[String]] -> (Float,Float,Float,Float)
-langCountAll (oopC, funcC,oopT,funcT) [] = (oopC,funcC,oopT,funcT)
-langCountAll (oopC, funcC,oopT,funcT) (x:xs) = add4Tuple (countLangs [] [] oopC funcC oopT funcT x) (langCountAll (oopC, funcC,oopT,funcT) xs)
+langCountAll :: (Float,Float,Float,Float) -> [[String]] ->  Maybe Bool -> (Float,Float,Float,Float)
+langCountAll tup [] _ = tup
+langCountAll (oopC, funcC,oopT,funcT) (x:xs) typeFlag = add4Tuple (countLangs [] [] oopC funcC oopT funcT x typeFlag) (langCountAll (oopC, funcC,oopT,funcT) xs typeFlag)
 
-countLangs :: [String] -> [String] -> Float -> Float -> Float -> Float -> [String] -> (Float,Float,Float,Float)
-countLangs uOop uFunc oopC funcC oopT funcT []
-    | Prelude.null uOop && Prelude.null uFunc = (oopC,funcC,oopT,funcT)
-    | Prelude.null uOop = (oopC,funcC,oopT,funcT+1)
-    | Prelude.null uFunc = (oopC,funcC,oopT+1,funcT)
+countLangs :: [String] -> [String] -> Float -> Float -> Float -> Float -> [String] -> Maybe Bool -> (Float,Float,Float,Float)
+countLangs uOop uFunc oopC funcC oopT funcT [] typeFlag
+    | typeFlag == Nothing = (oopC,funcC,oopT,funcT)
+    | typeFlag == Just False = (oopC,funcC,oopT,funcT+1)
+    | typeFlag == Just True = (oopC,funcC,oopT+1,funcT)
     | otherwise = (oopC,funcC,oopT,funcT)
-countLangs uOop uFunc oopC funcC oopT funcT (x:y:xs)
+countLangs uOop uFunc oopC funcC oopT funcT (x:y:_:xs) typeFlag
   | x == "oop" =
         if y `elem` uOop
-            then
-                countLangs uOop uFunc oopC funcC oopT funcT xs
+            then 
+                countLangs uOop uFunc oopC funcC oopT funcT xs typeFlag
         else
             do
+                let newTypeFlag = Just True
                 let newuOop = uOop ++ [y]
-                countLangs newuOop uFunc (oopC+1) funcC oopT funcT xs
+                countLangs newuOop uFunc (oopC+1) funcC oopT funcT xs newTypeFlag
   | x == "functional" =
         if y `elem` uFunc
             then
-                countLangs uOop uFunc oopC funcC oopT funcT xs
+                countLangs uOop uFunc oopC funcC oopT funcT xs typeFlag
         else
             do
                 let newuFunc = uFunc ++ [y]
-                countLangs uOop newuFunc oopC (funcC+1) oopT funcT xs
-  | otherwise = countLangs uOop uFunc oopC funcC oopT funcT xs
+                let newTypeFlag = Just False
+                countLangs uOop newuFunc oopC (funcC+1) oopT funcT xs newTypeFlag
+  | otherwise = countLangs uOop uFunc oopC funcC oopT funcT xs typeFlag
 
 add4Tuple :: (Float,Float,Float,Float) -> (Float,Float,Float,Float) -> (Float,Float,Float,Float)
 add4Tuple (x1,y1,z1,w1) (x2,y2,z2,w2) = (x1+x2,y1+y2,z1+z2,w1+w2)
@@ -369,6 +408,6 @@ doubleFlattenList return [] = return
 doubleFlattenList return (x:xs) = return++[flattenList [] x]++doubleFlattenList return xs
 
 flattenList :: [Text] -> [Text] -> [Text]
-flattenList = Prelude.foldl (\ fList x -> fList ++ Data.Text.splitOn "," x)
+flattenList = Prelude.foldl (\ fList x -> fList ++ DT.splitOn "," x)
 
 
