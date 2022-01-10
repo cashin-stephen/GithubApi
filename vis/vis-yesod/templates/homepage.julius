@@ -1,7 +1,7 @@
 // BAR CHART 1
 
 // set the dimensions and margins of the graph
-var margin = {top: 30, right: 30, bottom: 70, left: 60},
+var margin = {top: 30, right: 30, bottom: 1400, left: 60},
     width = 460 - margin.left - margin.right,
     height = 400 - margin.top - margin.bottom;
 
@@ -15,7 +15,8 @@ var b1Chart = d3.select("#my_dataviz")
           "translate(" + margin.left + "," + margin.top + ")");
 
 // Parse the Data
-d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/sales.csv", function(data) {
+//d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/totalLang.csv", function(data) {
+d3.csv("data/totalLang.csv", function(data) {
 
 // X axis
 var x = d3.scaleBand()
@@ -31,7 +32,7 @@ b1Chart.append("g")
 
 // Add Y axis
 var y = d3.scaleLinear()
-  .domain([0, 15])
+  .domain([0, 4])
   .range([ height, 0]);
 b1Chart.append("g")
   .call(d3.axisLeft(y));
@@ -42,9 +43,9 @@ b1Chart.selectAll("mybar")
   .enter()
   .append("rect")
     .attr("x", function(d) { return x(d.type); })
-    .attr("y", function(d) { return y(d.Languages); })
+    .attr("y", function(d) { return y(d.lang); })
     .attr("width", x.bandwidth())
-    .attr("height", function(d) { return height - y(d.Languages); })
+    .attr("height", function(d) { return height - y(d.lang); })
     .attr("fill", "#69b3a2")
 
 })
@@ -66,12 +67,12 @@ var b2Chart = d3.select("#my_dataviz2")
           "translate(" + margin.left + "," + margin.top + ")");
 
 // Parse the Data
-d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/XYZ.csv", function(data) {
+d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/totalfLang.csv", function(data) {
 
 // X axis
 var x = d3.scaleBand()
   .range([ 0, width ])
-  .domain(data.map(function(d) { return d.Type; }))
+  .domain(data.map(function(d) { return d.type; }))
   .padding(0.2);
 b2Chart.append("g")
   .attr("transform", "translate(0," + height + ")")
@@ -82,7 +83,7 @@ b2Chart.append("g")
 
 // Add Y axis
 var y = d3.scaleLinear()
-  .domain([0, 15])
+  .domain([0, 3])
   .range([ height, 0]);
 b2Chart.append("g")
   .call(d3.axisLeft(y));
@@ -92,10 +93,10 @@ b2Chart.selectAll("mybar")
   .data(data)
   .enter()
   .append("rect")
-    .attr("x", function(d) { return x(d.Type); })
-    .attr("y", function(d) { return y(d.fLanguages); })
+    .attr("x", function(d) { return x(d.type); })
+    .attr("y", function(d) { return y(d.lang); })
     .attr("width", x.bandwidth())
-    .attr("height", function(d) { return height - y(d.fLanguages); })
+    .attr("height", function(d) { return height - y(d.lang); })
     .attr("fill", "#69b3a2")
 
 })
@@ -122,14 +123,15 @@ var pieChart = d3.select("#pieChart")
   .append("g")
     .attr("transform", "translate(" + pWidth / 2 + "," + pHeight / 2 + ")");
 
-//d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/pie.csv", function(pData) {
+d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/typeCount.csv", function(pData) {
 
 // Create dummy data
-var pData = {
+/*var pData = {
       Oop:  55,
       Func: 30,
       Other: 15
      }
+*/
 
 // set the color scale
 var pColor = d3.scaleOrdinal()
@@ -169,7 +171,7 @@ pieChart
   .attr("transform", function(d) { return "translate(" + arcGenerator.centroid(d) + ")";  })
   .style("text-anchor", "middle")
   .style("font-size", 17)
-
+});
 
 ///  LINE CHART 1
 
@@ -187,7 +189,7 @@ var lineChart1 = d3.select("#my_dataviz3")
           "translate(" + margin.left + "," + margin.top + ")");
 
 //Read the data
-d3.csv("/static/csv/totLang.csv", function(data) {
+d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/yearLang.csv", function(data) {
 
   console.log(data)
   // group the data: I want to draw one line per group
@@ -205,7 +207,7 @@ d3.csv("/static/csv/totLang.csv", function(data) {
 
   // Add Y axis
   var y = d3.scaleLinear()
-    .domain([0, d3.max(data, function(d) { return +d.langs; })])
+    .domain([0, d3.max(data, function(d) { return +d.lang; })])
     .range([ height, 0 ]);
   lineChart1.append("g")
     .call(d3.axisLeft(y));
@@ -227,7 +229,7 @@ d3.csv("/static/csv/totLang.csv", function(data) {
         .attr("d", function(d){
           return d3.line()
             .x(function(d) { return x(d.year); })
-            .y(function(d) { return y(+d.langs); })
+            .y(function(d) { return y(+d.lang); })
             (d.values)
         })
 })
@@ -248,7 +250,7 @@ var lineChart2 = d3.select("#my_dataviz4")
           "translate(" + margin.left + "," + margin.top + ")");
 
 //Read the data
-d3.csv("/static/csv/fl.csv", function(data) {
+d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/yearLang.csv", function(data) {
 
   console.log(data)
 
@@ -267,7 +269,7 @@ d3.csv("/static/csv/fl.csv", function(data) {
 
   // Add Y axis
   var y = d3.scaleLinear()
-    .domain([0, d3.max(data, function(d) { return +d.langs; })])
+    .domain([0, d3.max(data, function(d) { return +d.lang; })])
     .range([ height, 0 ]);
   lineChart2.append("g")
     .call(d3.axisLeft(y));
@@ -289,7 +291,7 @@ d3.csv("/static/csv/fl.csv", function(data) {
         .attr("d", function(d){
           return d3.line()
             .x(function(d) { return x(d.year); })
-            .y(function(d) { return y(+d.langs); })
+            .y(function(d) { return y(+d.lang); })
             (d.values)
         })
 })

@@ -1,0 +1,1 @@
+stack run -- $1 $2 $3 && cd vis/vis-yesod && stack run
