@@ -40,13 +40,13 @@ import System.IO
 
 someFunc :: IO ()
 someFunc = do
-    writeFile "cPie.csv" ""
-    writeFile "cBar.csv" ""
-    writeFile "typeCount.csv" ""
-    writeFile "totalLang.csv" ""
-    writeFile "totalfLang.csv" ""
-    writeFile "yearLang.csv" ""
-    writeFile "yearfLang.csv" ""
+    writeFile "vis/vis-yesod/data/cPie.csv" ""
+    writeFile "vis/vis-yesod/data/cBar.csv" ""
+    writeFile "vis/vis-yesod/data/typeCount.csv" ""
+    writeFile "vis/vis-yesod/data/totalLang.csv" ""
+    writeFile "vis/vis-yesod/data/totalfLang.csv" ""
+    writeFile "vis/vis-yesod/data/yearLang.csv" ""
+    writeFile "vis/vis-yesod/data/yearfLang.csv" ""
     putStrLn "about to call"
     (uName:user:token:_) <- getArgs
     let auth = BasicAuthData (fromString user) (fromString token)
@@ -56,15 +56,15 @@ someFunc = do
             line <- readLines uName
             print line
             githubCall auth line
-            formatTypeCount "cPie.csv" "typeCount.csv"
-            formatLang "cBar.csv" "totalLang.csv" "totalfLang.csv" "yearLang.csv" "yearfLang.csv"
+            formatTypeCount "vis/vis-yesod/data/cPie.csv" "vis/vis-yesod/data/typeCount.csv"
+            formatLang "vis/vis-yesod/data/cBar.csv" "vis/vis-yesod/data/totalLang.csv" "vis/vis-yesod/data/totalfLang.csv" "vis/vis-yesod/data/yearLang.csv" "vis/vis-yesod/data/yearfLang.csv"
 
     else
         do
             print "not file"
             githubCall auth uName
-            formatTypeCount "cPie.csv" "typeCount.csv"
-            formatLang "cBar.csv" "totalLang.csv" "totalfLang.csv" "yearLang.csv" "yearfLang.csv"
+            formatTypeCount "vis/vis-yesod/data/cPie.csv" "vis/vis-yesod/data/typeCount.csv"
+            formatLang "vis/vis-yesod/data/cBar.csv" "vis/vis-yesod/data/totalLang.csv" "vis/vis-yesod/data/totalfLang.csv" "vis/vis-yesod/data/yearLang.csv" "vis/vis-yesod/data/yearfLang.csv"
 
 readLines :: FilePath -> IO [String]
 readLines = fmap Prelude.lines . readFile
@@ -133,7 +133,7 @@ getUserCommits _ _ user name acc [] = do
                                                 let earlyUserCommits = shortenedUC sorteduserCommits
                                                 let pType = determinePType 0 0 0 earlyUserCommits
                                                 exportUserCommits pType userCommits
-                                                appendFile "cPie.csv" (pType++"\n")
+                                                appendFile "vis/vis-yesod/data/cPie.csv" (pType++"\n")
                                                 --print earlyUserCommits
                                                 print pType
 
@@ -170,10 +170,10 @@ removeNonUserCommits (Just user) name acc ((repo, lang, uName, date):xs) =
                                                                     removeNonUserCommits (Just user) name acc xs
 
 exportUserCommits :: String -> [(String,Maybe Text,String,String)] -> IO ()
-exportUserCommits _ [] = appendFile "cBar.csv" ("---" ++"\n")
+exportUserCommits _ [] = appendFile "vis/vis-yesod/data/cBar.csv" ("---" ++"\n")
 exportUserCommits pType ((repo,Nothing,uName,date):xs) = exportUserCommits pType xs
 exportUserCommits pType ((repo,Just lang,uName,date):xs) = do
-                                                    appendFile "cBar.csv" (pType ++ ","++ unpack lang ++ "," ++ Prelude.take 4 date ++"\n" )
+                                                    appendFile "vis/vis-yesod/data/cBar.csv" (pType ++ ","++ unpack lang ++ "," ++ Prelude.take 4 date ++"\n" )
                                                     exportUserCommits pType xs
 
 
@@ -260,18 +260,17 @@ formatLang input output foutput youtput fyoutput = do
                             contents <- hGetContents i
                             let lData = DS.splitOn ["---"] (Prelude.lines contents)
                             let tlData = doubleListToText [] lData
-                            --print lData
                             let tupData = sortAll [] (tuplifyAll [] tlData)
-                            --print tupData
                             let flatData = doubleFlattenList [] tlData
-                            --print flatData
-                            let activeYears = sort (nub (getActiveYears [] (concat tupData)))
-                            print activeYears
+                            let activeYears = listToString [] (sort (nub (getActiveYears [] (concat tupData))))
                             let langCounts = langCountAll (0,0,0,0) (doubleListToString [] flatData) Nothing
-                            print langCounts
                             let flangCounts = fLangCountAll (0,0,0,0) (doubleListToString [] flatData) Nothing
-                            
-                            print flangCounts
+                            let langCountByyear = countYearLangsbyYear [] activeYears (doubleListToString [] flatData) Nothing
+                            let flangCountByyear = countYearLangsbyYear [] activeYears (doubleListToString [] flatData) Nothing
+                            appendFile youtput ("year,type,lang" ++ "\n")
+                            writeCountYearLangsbyYear youtput langCountByyear
+                            appendFile fyoutput ("year,type,flang" ++ "\n")
+                            writeCountYearLangsbyYear fyoutput langCountByyear
                             appendFile output ("type,lang" ++ "\n" ++
                                 "oop," ++ show (first4 langCounts/third4 langCounts) ++ "\n" ++
                                 "functional," ++ show (second4 langCounts/fourth4 langCounts) ++ "\n")
@@ -279,32 +278,93 @@ formatLang input output foutput youtput fyoutput = do
                                 "oop," ++ show (first4 flangCounts/third4 flangCounts) ++ "\n" ++
                                 "functional," ++ show (second4 flangCounts/fourth4 flangCounts) ++ "\n")
 
---countYearLangs :: [String] -> [(String,Float,Float,Float,Float)] -> [String] -> [(String,Float,Float,Float,Float)]
+writeCountYearLangsbyYear :: FilePath -> [(String,Float,Float,Float,Float)] -> IO ()
+writeCountYearLangsbyYear _ [] = return ()
+writeCountYearLangsbyYear output ((year,oopC,funcC,oopT,funcT):xs) = do
+    appendFile output (year ++ ",oop," ++ show (oopC/oopT) ++ "\n" ++
+                       year ++ ",func," ++ show (funcC/funcT) ++ "\n")
+    writeCountYearLangsbyYear output xs
 
-sortAll :: [[(Text,Text,Text)]] -> [[(Text,Text,Text)]] -> [[(Text,Text,Text)]]
-sortAll sortedTup [] = sortedTup
-sortAll sortedTup (x:xs) = sortedTup++[sortLTup x]++sortAll sortedTup xs
+countYearLangsbyYear :: [(String,Float,Float,Float,Float)] -> [String] -> [[String]] -> Maybe Bool -> [(String,Float,Float,Float,Float)]
+countYearLangsbyYear finalList [] _ _ = finalList
+countYearLangsbyYear acc (x:xs) tupData typeFlag = acc++[countYearLangAll (x,0,0,0,0) tupData typeFlag]++ countYearLangsbyYear acc xs tupData typeFlag
 
-sortLTup :: Ord a => [(a,a,a)] -> [(a,a,a)]
-sortLTup = sortBy (\(_,_,a) (_,_,b) -> compare a b)
+countYearLangAll :: (String,Float,Float,Float,Float) -> [[String]] -> Maybe Bool -> (String,Float,Float,Float,Float)
+countYearLangAll acc [] _ = acc
+countYearLangAll (year,oopC,funcC,oopT,funcT) (x:xs) typeFlag = add4Tuple5 (countYearLang year [] [] oopC funcC oopT funcT x typeFlag) (countYearLangAll (year,oopC,funcC,oopT,funcT) xs typeFlag)
 
-tuplifyAll :: [[(Text,Text,Text)]] -> [[Text]] -> [[(Text,Text,Text)]]
-tuplifyAll tup [] = tup
-tuplifyAll tup (x:xs) = tup++[tuplify [] (splitText [] x)]++tuplifyAll tup xs
+countYearLang :: String -> [String] -> [String] -> Float -> Float -> Float -> Float -> [String] -> Maybe Bool -> (String,Float,Float,Float,Float)
+countYearLang year uOop uFunc oopC funcC oopT funcT [] typeFlag
+    | typeFlag == Nothing = (year,oopC,funcC,oopT,funcT)
+    | typeFlag == Just False = (year,oopC,funcC,oopT,funcT+1)
+    | typeFlag == Just True = (year,oopC,funcC,oopT+1,funcT)
+    | otherwise = (year,oopC,funcC,oopT,funcT)
+countYearLang year uOop uFunc oopC funcC oopT funcT (x:y:z:xs) typeFlag
+    | x == "oop" =
+         if y `elem` uOop then
+                countYearLang year uOop uFunc oopC funcC oopT funcT xs typeFlag
+            else
+                do
+                    let newTypeFlag = Just True
+                    let newuOop = uOop ++ [y]
+                    if z == year then
+                        countYearLang year newuOop uFunc (oopC+1) funcC oopT funcT xs newTypeFlag
+                    else
+                        countYearLang year uOop uFunc oopC funcC oopT funcT xs newTypeFlag
+    | x == "functional" = 
+            if y `elem` uFunc then
+                countYearLang year uOop uFunc oopC funcC oopT funcT xs typeFlag
+            else
+                do
+                    let newuFunc = uFunc ++ [y]
+                    let newTypeFlag = Just False
+                    if z == year then
+                        countYearLang year uOop newuFunc oopC (funcC+1) oopT funcT xs newTypeFlag
+                    else
+                        countYearLang year uOop uFunc oopC funcC oopT funcT xs newTypeFlag
+    | otherwise =  countYearLang year uOop uFunc oopC funcC oopT funcT xs typeFlag
 
-tuplify :: [(Text,Text,Text)] -> [Text] -> [(Text,Text,Text)]
-tuplify tup [] = tup
-tuplify tup (x:y:z:xs) = tup++[(x,y,z)]++tuplify tup xs
+countYearfLangsbyYear :: [(String,Float,Float,Float,Float)] -> [String] -> [[String]] -> Maybe Bool -> [(String,Float,Float,Float,Float)]
+countYearfLangsbyYear finalList [] _ _ = finalList
+countYearfLangsbyYear acc (x:xs) tupData typeFlag = acc++[countYearfLangAll (x,0,0,0,0) tupData typeFlag]++ countYearfLangsbyYear acc xs tupData typeFlag
 
-splitText ::[Text] -> [Text] -> [Text]
-splitText list [] = list
-splitText list (x:xs) = list++DT.splitOn "," x++splitText list xs
+countYearfLangAll :: (String,Float,Float,Float,Float) -> [[String]] -> Maybe Bool -> (String,Float,Float,Float,Float)
+countYearfLangAll acc [] _ = acc
+countYearfLangAll (year,oopC,funcC,oopT,funcT) (x:xs) typeFlag = add4Tuple5 (countYearfLang year [] [] oopC funcC oopT funcT x typeFlag) (countYearfLangAll (year,oopC,funcC,oopT,funcT) xs typeFlag)
 
-getActiveYears :: [Text] -> [(Text,Text,Text)] -> [Text]
-getActiveYears acc [] = acc
-getActiveYears acc ((_,_,year):xs) = acc++[year]++getActiveYears acc xs
+countYearfLang :: String -> [String] -> [String] -> Float -> Float -> Float -> Float -> [String] -> Maybe Bool -> (String,Float,Float,Float,Float)
+countYearfLang year uOop uFunc oopC funcC oopT funcT [] typeFlag
+    | typeFlag == Nothing = (year,oopC,funcC,oopT,funcT)
+    | typeFlag == Just False = (year,oopC,funcC,oopT,funcT+1)
+    | typeFlag == Just True = (year,oopC,funcC,oopT+1,funcT)
+    | otherwise = (year,oopC,funcC,oopT,funcT)
+countYearfLang year uOop uFunc oopC funcC oopT funcT (x:y:z:xs) typeFlag
+    | x == "oop" =
+        if y `elem` uOop then
+            countYearLang year uOop uFunc oopC funcC oopT funcT xs typeFlag
+        else
+            do
+                let newTypeFlag = Just True
+                let newuOop = uOop ++ [y]
+                if z == year && not (isOop (pack y)) then
+                    countYearLang year newuOop uFunc (oopC+1) funcC oopT funcT xs newTypeFlag
+                else
+                    countYearLang year uOop uFunc oopC funcC oopT funcT xs newTypeFlag
+    | x == "functional" = 
+        if y `elem` uFunc then
+            countYearLang year uOop uFunc oopC funcC oopT funcT xs typeFlag
+        else
+            do
+                let newuFunc = uFunc ++ [y]
+                let newTypeFlag = Just False
+                if z == year && not (isFunc (pack y)) then
+                    countYearLang year uOop newuFunc oopC (funcC+1) oopT funcT xs newTypeFlag
+                else
+                    countYearLang year uOop uFunc oopC funcC oopT funcT xs newTypeFlag
+    | otherwise =  countYearLang year uOop uFunc oopC funcC oopT funcT xs typeFlag
 
-fLangCountAll :: (Float,Float,Float,Float) -> [[String]] -> Maybe Bool -> (Float,Float,Float,Float) 
+
+fLangCountAll :: (Float,Float,Float,Float) -> [[String]] -> Maybe Bool -> (Float,Float,Float,Float)
 fLangCountAll tup [] _ = tup
 fLangCountAll (oopC, funcC,oopT,funcT) (x:xs) typeFlag = add4Tuple (countfLangs [] [] oopC funcC oopT funcT x typeFlag) (fLangCountAll (oopC, funcC,oopT,funcT) xs typeFlag)
 
@@ -356,7 +416,7 @@ countLangs uOop uFunc oopC funcC oopT funcT [] typeFlag
 countLangs uOop uFunc oopC funcC oopT funcT (x:y:_:xs) typeFlag
   | x == "oop" =
         if y `elem` uOop
-            then 
+            then
                 countLangs uOop uFunc oopC funcC oopT funcT xs typeFlag
         else
             do
@@ -374,8 +434,35 @@ countLangs uOop uFunc oopC funcC oopT funcT (x:y:_:xs) typeFlag
                 countLangs uOop newuFunc oopC (funcC+1) oopT funcT xs newTypeFlag
   | otherwise = countLangs uOop uFunc oopC funcC oopT funcT xs typeFlag
 
+
+sortAll :: [[(Text,Text,Text)]] -> [[(Text,Text,Text)]] -> [[(Text,Text,Text)]]
+sortAll sortedTup [] = sortedTup
+sortAll sortedTup (x:xs) = sortedTup++[sortLTup x]++sortAll sortedTup xs
+
+sortLTup :: Ord a => [(a,a,a)] -> [(a,a,a)]
+sortLTup = sortBy (\(_,_,a) (_,_,b) -> compare a b)
+
+tuplifyAll :: [[(Text,Text,Text)]] -> [[Text]] -> [[(Text,Text,Text)]]
+tuplifyAll tup [] = tup
+tuplifyAll tup (x:xs) = tup++[tuplify [] (splitText [] x)]++tuplifyAll tup xs
+
+tuplify :: [(Text,Text,Text)] -> [Text] -> [(Text,Text,Text)]
+tuplify tup [] = tup
+tuplify tup (x:y:z:xs) = tup++[(x,y,z)]++tuplify tup xs
+
+splitText ::[Text] -> [Text] -> [Text]
+splitText list [] = list
+splitText list (x:xs) = list++DT.splitOn "," x++splitText list xs
+
+getActiveYears :: [Text] -> [(Text,Text,Text)] -> [Text]
+getActiveYears acc [] = acc
+getActiveYears acc ((_,_,year):xs) = acc++[year]++getActiveYears acc xs
+
 add4Tuple :: (Float,Float,Float,Float) -> (Float,Float,Float,Float) -> (Float,Float,Float,Float)
 add4Tuple (x1,y1,z1,w1) (x2,y2,z2,w2) = (x1+x2,y1+y2,z1+z2,w1+w2)
+
+add4Tuple5 :: (String,Float,Float,Float,Float) -> (String,Float,Float,Float,Float) -> (String,Float,Float,Float,Float)
+add4Tuple5 (s1,x1,y1,z1,w1) (s2,x2,y2,z2,w2) = (s1,x1+x2,y1+y2,z1+z2,w1+w2)
 
 first4 :: (a,a,a,a) -> a
 first4 (x,_,_,_) = x
