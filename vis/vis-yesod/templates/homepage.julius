@@ -58,7 +58,7 @@ var margin = {top: 30, right: 30, bottom: 70, left: 60},
     height = 400 - margin.top - margin.bottom;
 
 // append the svg object to the body of the page
-var b2Chart = d3.select("#my_dataviz2")
+var b2Chart = d3.select("#my_dataviz")
   .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
@@ -67,7 +67,7 @@ var b2Chart = d3.select("#my_dataviz2")
           "translate(" + margin.left + "," + margin.top + ")");
 
 // Parse the Data
-d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/totalfLang.csv", function(data) {
+d3.csv("data/totalfLang.csv", function(data) {
 
 // X axis
 var x = d3.scaleBand()
@@ -101,78 +101,6 @@ b2Chart.selectAll("mybar")
 
 })
 
-///PIE CAHRT
-
-// This code originally taken from
-// https://www.d3-graph-gallery.com/graph/pie_annotation.html
-
-// set the dimensions and margins of the graph
-
-var pWidth = 450
-    pHeight = 450
-    pMargin = 40
-
-// The pRadius of the pieplot is half the pWidth or half the pHeight (smallest one). I subtract a bit of pMargin.
-var pRadius = Math.min(pWidth, pHeight) / 2 - pMargin
-
-// append the pieChart object to the div called 'my_dataviz'
-var pieChart = d3.select("#pieChart")
-  .append("svg")
-    .attr("width", pWidth)
-    .attr("height", pHeight)
-  .append("g")
-    .attr("transform", "translate(" + pWidth / 2 + "," + pHeight / 2 + ")");
-
-d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/typeCount.csv", function(pData) {
-
-// Create dummy data
-/*var pData = {
-      Oop:  55,
-      Func: 30,
-      Other: 15
-     }
-*/
-
-// set the color scale
-var pColor = d3.scaleOrdinal()
-  .domain(pData)
-  .range(d3.schemeSet2);
-
-// Compute the position of each group on the pie:
-var pie = d3.pie()
-  .value(function(d) {return d.value; })
-var data_ready = pie(d3.entries(pData))
-// Now I know that group A goes from 0 degrees to x degrees and so on.
-
-// shape helper to build arcs:
-var arcGenerator = d3.arc()
-  .innerRadius(0)
-  .outerRadius(pRadius)
-
-// Build the pie chart: Basically, each part of the pie is a path that we build using the arc function.
-pieChart
-  .selectAll('mySlices')
-  .data(data_ready)
-  .enter()
-  .append('path')
-    .attr('d', arcGenerator)
-    .attr('fill', function(d){ return(pColor(d.data.key)) })
-    .attr("stroke", "black")
-    .style("stroke-pWidth", "2px")
-    .style("opacity", 0.7)
-
-// Now add the annotation. Use the centroid method to get the best coordinates
-pieChart
-  .selectAll('mySlices')
-  .data(data_ready)
-  .enter()
-  .append('text')
-  .text(function(d){ return d.data.key + ":" + d.data.value})
-  .attr("transform", function(d) { return "translate(" + arcGenerator.centroid(d) + ")";  })
-  .style("text-anchor", "middle")
-  .style("font-size", 17)
-});
-
 ///  LINE CHART 1
 
 var margin = {top: 10, right: 30, bottom: 30, left: 60},
@@ -189,7 +117,8 @@ var lineChart1 = d3.select("#my_dataviz3")
           "translate(" + margin.left + "," + margin.top + ")");
 
 //Read the data
-d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/yearLang.csv", function(data) {
+//d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/yearLang.csv", function(data) {
+  d3.csv("../data/yearLang.csv", function(data) {
 
   console.log(data)
   // group the data: I want to draw one line per group
@@ -241,7 +170,7 @@ var margin = {top: 10, right: 30, bottom: 30, left: 60},
     height = 400 - margin.top - margin.bottom;
 
 // append the svg object to the body of the page
-var lineChart2 = d3.select("#my_dataviz4")
+var lineChart2 = d3.select("#my_dataviz3")
   .append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
@@ -250,7 +179,8 @@ var lineChart2 = d3.select("#my_dataviz4")
           "translate(" + margin.left + "," + margin.top + ")");
 
 //Read the data
-d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/yearLang.csv", function(data) {
+//d3.csv("https://raw.githubusercontent.com/cashin-stephen/GithubApi/main/vis/vis-yesod/data/yearLang.csv", function(data) {
+d3.csv("../data/yearfLang.csv", function(data) {
 
   console.log(data)
 

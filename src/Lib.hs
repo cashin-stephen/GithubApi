@@ -313,7 +313,7 @@ formatLang input output foutput youtput fyoutput = do
                             let flangCounts = fLangCountAll (0,0,0,0) (doubleListToString [] flatData) Nothing
                             let langCountByyear = countYearLangsbyYear [] activeYears (doubleListToString [] flatData) Nothing
                             print langCountByyear
-                            let flangCountByyear = countYearLangsbyYear [] activeYears (doubleListToString [] flatData) Nothing
+                            let flangCountByyear = countYearfLangsbyYear [] activeYears (doubleListToString [] flatData) Nothing
                             print flangCountByyear
                             appendFile youtput ("year,type,lang" ++ "\n")
                             writeCountYearLangsbyYear youtput langCountByyear
@@ -382,6 +382,18 @@ countYearLang year uOop uFunc oopC funcC oopT funcT (x:y:z:xs) typeFlag
                     else
                         countYearLang year uOop uFunc oopC funcC oopT funcT xs newTypeFlag
     | otherwise =  countYearLang year uOop uFunc oopC funcC oopT funcT xs typeFlag
+
+-- Function that takes list of commit data, list of years and a type flag that determines the type of the user.
+-- Works recursively through the list adding an entry containg information about unique foreign languages encountered for each year
+countYearfLangsbyYear :: [(String,Float,Float,Float,Float)] -> [String] -> [[String]] -> Maybe Bool -> [(String,Float,Float,Float,Float)]
+countYearfLangsbyYear finalList [] _ _ = finalList
+countYearfLangsbyYear acc (x:xs) tupData typeFlag = let previousYears = countYearfLangAll (x,0,0,0,0) tupData typeFlag in acc++[previousYears]++ countYearfLangsbyYear acc xs tupData typeFlag
+
+-- Function that takes a list containing commit info and an accumulator a type flag
+-- Works recursively through the info accumualting the relevant counts
+countYearfLangAll :: (String,Float,Float,Float,Float) -> [[String]] -> Maybe Bool -> (String,Float,Float,Float,Float)
+countYearfLangAll acc [] _ = acc
+countYearfLangAll (year,oopC,funcC,oopT,funcT) (x:xs) typeFlag = add4Tuple5 (countYearfLang year [] [] oopC funcC oopT funcT x typeFlag) (countYearfLangAll (year,oopC,funcC,oopT,funcT) xs typeFlag)
 
 
 -- Function that counts the number of languages used by a user in each year

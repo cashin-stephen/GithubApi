@@ -1,11 +1,5 @@
 <h1> This is a test of stephen's homepage
-<h2> Pie Chart
-<div id="pieChart">
-<h2> Bar Chart 1
+<h2> Total number of languages learned  Total number of foreign languages learned
 <div id="my_dataviz">
-<h2> Bar Chart 2
-<div id="my_dataviz2">
-<h2> Line Chart 1
+<h2> Total number of new languages learned per year Total number of new foreign languages learned per year
 <div id="my_dataviz3">
-<h2> Line Chart 2
-<div id="my_dataviz4">
